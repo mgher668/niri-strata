@@ -1,0 +1,13 @@
+{
+  "name": "niri-strata",
+  "description": "A Quickshell bar and Material You control center for the niri compositor.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mgher/niri-strata.git"
+  },
+  "type": "module",
+  "scripts": {
+    "harness": "node harness/niri-state-core.test.mjs"
+  }
+}

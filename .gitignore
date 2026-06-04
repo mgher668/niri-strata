@@ -1,0 +1,17 @@
+.serena/
+
+*.log
+*.qslog
+
+.DS_Store
+Thumbs.db
+
+node_modules/
+coverage/
+
+tmp/
+*.tmp
+
+bar-*.png
+sidebar-*.png
+*-scratch.png

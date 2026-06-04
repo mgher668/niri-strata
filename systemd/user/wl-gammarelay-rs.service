@@ -1,0 +1,12 @@
+[Unit]
+Description=Wayland gamma relay
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/wl-gammarelay-rs run
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

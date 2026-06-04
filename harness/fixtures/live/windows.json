@@ -1,0 +1,167 @@
+[
+  {
+    "id": 8,
+    "title": "Reference Browser",
+    "app_id": "demo-browser",
+    "pid": 1008,
+    "workspace_id": 3,
+    "is_focused": false,
+    "is_floating": false,
+    "is_urgent": false,
+    "layout": {
+      "pos_in_scrolling_layout": [
+        1,
+        1
+      ],
+      "tile_size": [
+        1920.0,
+        1050.0
+      ],
+      "window_size": [
+        1920,
+        1050
+      ],
+      "tile_pos_in_workspace_view": null,
+      "window_offset_in_tile": [
+        0.0,
+        0.0
+      ]
+    },
+    "focus_timestamp": {
+      "secs": 5085,
+      "nanos": 429541842
+    }
+  },
+  {
+    "id": 2,
+    "title": "Project Terminal",
+    "app_id": "demo-terminal",
+    "pid": 1002,
+    "workspace_id": 4,
+    "is_focused": false,
+    "is_floating": false,
+    "is_urgent": false,
+    "layout": {
+      "pos_in_scrolling_layout": [
+        2,
+        1
+      ],
+      "tile_size": [
+        1253.0,
+        1018.0
+      ],
+      "window_size": [
+        1253,
+        1018
+      ],
+      "tile_pos_in_workspace_view": null,
+      "window_offset_in_tile": [
+        0.0,
+        0.0
+      ]
+    },
+    "focus_timestamp": {
+      "secs": 6985,
+      "nanos": 814452699
+    }
+  },
+  {
+    "id": 10,
+    "title": "Editor",
+    "app_id": "demo-editor",
+    "pid": 1010,
+    "workspace_id": 4,
+    "is_focused": true,
+    "is_floating": false,
+    "is_urgent": false,
+    "layout": {
+      "pos_in_scrolling_layout": [
+        3,
+        1
+      ],
+      "tile_size": [
+        1920.0,
+        1050.0
+      ],
+      "window_size": [
+        1920,
+        1050
+      ],
+      "tile_pos_in_workspace_view": null,
+      "window_offset_in_tile": [
+        0.0,
+        0.0
+      ]
+    },
+    "focus_timestamp": {
+      "secs": 7987,
+      "nanos": 238249576
+    }
+  },
+  {
+    "id": 6,
+    "title": "Documentation",
+    "app_id": "demo-browser",
+    "pid": 1006,
+    "workspace_id": 1,
+    "is_focused": false,
+    "is_floating": false,
+    "is_urgent": false,
+    "layout": {
+      "pos_in_scrolling_layout": [
+        1,
+        1
+      ],
+      "tile_size": [
+        1920.0,
+        1050.0
+      ],
+      "window_size": [
+        1920,
+        1050
+      ],
+      "tile_pos_in_workspace_view": null,
+      "window_offset_in_tile": [
+        0.0,
+        0.0
+      ]
+    },
+    "focus_timestamp": {
+      "secs": 5050,
+      "nanos": 149555215
+    }
+  },
+  {
+    "id": 9,
+    "title": "Build Terminal",
+    "app_id": "demo-terminal",
+    "pid": 1009,
+    "workspace_id": 4,
+    "is_focused": false,
+    "is_floating": false,
+    "is_urgent": false,
+    "layout": {
+      "pos_in_scrolling_layout": [
+        1,
+        1
+      ],
+      "tile_size": [
+        1888.0,
+        1018.0
+      ],
+      "window_size": [
+        1888,
+        1018
+      ],
+      "tile_pos_in_workspace_view": null,
+      "window_offset_in_tile": [
+        0.0,
+        0.0
+      ]
+    },
+    "focus_timestamp": {
+      "secs": 5097,
+      "nanos": 910511851
+    }
+  }
+]
