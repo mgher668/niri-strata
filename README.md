@@ -3,9 +3,7 @@
 A Quickshell bar and Material You control center for the
 [niri](https://github.com/YaLTeR/niri) compositor.
 
-`niri-strata` started as a niri-focused fork of
-[SimpleQuickshellBar](https://github.com/the-ink-serpent/SimpleQuickshellBar)
-and now includes a multi-output bar, system tray, notification center, quick
+It includes a multi-output bar, system tray, notification center, quick
 settings, and hardware/service panels.
 
 ## Status
@@ -154,8 +152,13 @@ The harness uses sanitized niri-shaped fixtures under
 `harness/fixtures/live`. Do not commit real window titles, local paths, Wi-Fi
 passwords, tokens, or other secrets into fixtures.
 
+## References and Acknowledgements
+
+- [end-4/dots-hyprland](https://github.com/end-4/dots-hyprland) inspired the
+  broader control-center direction and visual ambition.
+- [imiric/quickshell-niri](https://github.com/imiric/quickshell-niri) is a
+  useful niri-focused Quickshell reference.
+
 ## License
 
-MIT. This project is derived from
-[SimpleQuickshellBar](https://github.com/the-ink-serpent/SimpleQuickshellBar)
-by the-ink-serpent.
+MIT. See [LICENSE](./LICENSE).
