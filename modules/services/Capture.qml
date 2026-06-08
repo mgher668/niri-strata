@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
 
 Item {
@@ -6,10 +7,20 @@ Item {
 
     readonly property bool screenshotAvailable: tools.niri && tools.wlCopy
     readonly property bool recordingAvailable: tools.niri && tools.wfRecorder
+    readonly property bool regionRecordingAvailable: tools.slurp && tools.wfRecorder
     readonly property string screenshotStatus: screenshotAvailable ? "Clipboard" : "Unavailable"
     readonly property string recordingStatus: recordingActive ? "Recording" : recordingAvailable ? "Focused output" : "Unavailable"
+    readonly property string regionRecordingStatus: regionRecordingStarting ? "Selecting area" : regionRecordingActive ? "Recording region" : regionRecordingAvailable ? "Select region" : "Unavailable"
+    readonly property var regionRecordingCommand: [
+        "bash",
+        "-lc",
+        "set -euo pipefail\ndir=\"$HOME/Videos/Screen Recordings\"\nmkdir -p \"$dir\"\nfile=\"$dir/recording-region-$(date +%Y%m%d-%H%M%S).mp4\"\ngeometry=\"$(slurp)\"\n[ -n \"$geometry\" ]\nexec wf-recorder -g \"$geometry\" -f \"$file\"",
+    ]
 
     property bool recordingActive: false
+    property bool regionRecordingActive: false
+    property bool regionRecordingStarting: false
+    property int regionRecordingStartGraceTicks: 0
     property bool screenshotBusy: false
     property var tools: ({
         grim: false,
@@ -69,10 +80,36 @@ Item {
             recordingActive = false;
             if (!stopRecordingProcess.running)
                 stopRecordingProcess.running = true;
-        } else if (!startRecordingProcess.running) {
+        } else if (!regionRecordingActive && !startRecordingProcess.running) {
             recordingActive = true;
             startRecordingProcess.running = true;
         }
+    }
+
+    function toggleRegionRecording() {
+        if (!regionRecordingAvailable)
+            return;
+
+        if (regionRecordingActive || regionRecordingStarting) {
+            regionRecordingActive = false;
+            regionRecordingStarting = false;
+            regionRecordingStartGraceTicks = 0;
+            if (!stopRecordingProcess.running)
+                stopRecordingProcess.running = true;
+        } else if (!recordingActive) {
+            regionRecordingActive = true;
+            regionRecordingStarting = true;
+            regionRecordingStartGraceTicks = 8;
+            Quickshell.execDetached(regionRecordingCommand);
+            if (!regionRecordingMonitorTimer.running)
+                regionRecordingMonitorTimer.start();
+            refreshRegionRecordingState();
+        }
+    }
+
+    function refreshRegionRecordingState() {
+        if ((regionRecordingActive || regionRecordingStarting) && !regionRecordingMonitorProcess.running)
+            regionRecordingMonitorProcess.running = true;
     }
 
     Component.onCompleted: refresh()
@@ -82,6 +119,13 @@ Item {
         running: true
         repeat: true
         onTriggered: root.refresh()
+    }
+
+    Timer {
+        id: regionRecordingMonitorTimer
+        interval: 500
+        repeat: true
+        onTriggered: root.refreshRegionRecordingState()
     }
 
     Process {
@@ -132,6 +176,28 @@ Item {
             }
         }
         onExited: (exitCode, exitStatus) => root.recordingActive = false
+    }
+
+    Process {
+        id: regionRecordingMonitorProcess
+        command: ["bash", "-lc", "pgrep -x slurp >/dev/null 2>&1 || pgrep -x wf-recorder >/dev/null 2>&1"]
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode === 0) {
+                root.regionRecordingStarting = false;
+                root.regionRecordingActive = true;
+                root.regionRecordingStartGraceTicks = 0;
+                return;
+            }
+
+            if (root.regionRecordingStartGraceTicks > 0) {
+                root.regionRecordingStartGraceTicks -= 1;
+                return;
+            }
+
+            root.regionRecordingStarting = false;
+            root.regionRecordingActive = false;
+            root.regionRecordingMonitorTimer.stop();
+        }
     }
 
     Process {

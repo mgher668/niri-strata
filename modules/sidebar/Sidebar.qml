@@ -17,6 +17,13 @@ Scope {
     required property var audioService
     required property var mediaService
 
+    Timer {
+        id: startRegionRecordingTimer
+        interval: 250
+        repeat: false
+        onTriggered: root.systemActions.toggleRegionRecording()
+    }
+
     Variants {
         model: Quickshell.screens
 
@@ -210,6 +217,10 @@ Scope {
                                 QuickToggleGrid {
                                     Layout.fillWidth: true
                                     actions: root.systemActions
+                                    onStartRegionRecordingRequested: {
+                                        root.controller.close();
+                                        startRegionRecordingTimer.restart();
+                                    }
                                 }
 
                                 ResourceCard {

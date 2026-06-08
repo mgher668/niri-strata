@@ -45,6 +45,9 @@ Item {
     readonly property bool screenshotBusy: captureService.screenshotBusy
     readonly property bool recordingAvailable: captureService.recordingAvailable
     readonly property string recordingStatus: captureService.recordingStatus
+    readonly property bool regionRecordingAvailable: captureService.regionRecordingAvailable
+    readonly property string regionRecordingStatus: captureService.regionRecordingStatus
+    readonly property bool regionRecordingActive: captureService.regionRecordingActive
     readonly property bool lockAvailable: true
     readonly property bool recordingActive: captureService.recordingActive
     property string pendingSessionAction: ""
@@ -91,6 +94,10 @@ Item {
 
     function toggleRecording() {
         captureService.toggleRecording();
+    }
+
+    function toggleRegionRecording() {
+        captureService.toggleRegionRecording();
     }
 
     function setPowerProfile(profile) {

@@ -34,6 +34,10 @@ export function recordingAvailable(tools) {
   return tools.niri === true && tools.wfRecorder === true;
 }
 
+export function regionRecordingAvailable(tools) {
+  return tools.slurp === true && tools.wfRecorder === true;
+}
+
 export function captureToolProbeCommand() {
   return [
     "sh",
@@ -55,6 +59,22 @@ export function recordingStartCommand() {
     "bash",
     "-lc",
     "set -euo pipefail\ndir=\"$HOME/Videos/Screen Recordings\"\nmkdir -p \"$dir\"\nfile=\"$dir/recording-$(date +%Y%m%d-%H%M%S).mp4\"\noutput=\"$(niri msg --json focused-output | sed -n 's/.*\"name\":\"\\([^\"]*\\)\".*/\\1/p')\"\n[ -n \"$output\" ]\nwf-recorder -o \"$output\" -f \"$file\"",
+  ];
+}
+
+export function regionRecordingStartCommand() {
+  return [
+    "bash",
+    "-lc",
+    "set -euo pipefail\ndir=\"$HOME/Videos/Screen Recordings\"\nmkdir -p \"$dir\"\nfile=\"$dir/recording-region-$(date +%Y%m%d-%H%M%S).mp4\"\ngeometry=\"$(slurp)\"\n[ -n \"$geometry\" ]\nexec wf-recorder -g \"$geometry\" -f \"$file\"",
+  ];
+}
+
+export function regionRecordingMonitorCommand() {
+  return [
+    "bash",
+    "-lc",
+    "pgrep -x slurp >/dev/null 2>&1 || pgrep -x wf-recorder >/dev/null 2>&1",
   ];
 }
 

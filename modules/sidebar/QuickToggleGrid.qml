@@ -6,6 +6,7 @@ GridLayout {
     id: root
 
     required property var actions
+    signal startRegionRecordingRequested()
 
     columns: 2
     columnSpacing: Theme.spacing.md
@@ -21,6 +22,7 @@ GridLayout {
         "screenshot",
         "recording",
         "lock",
+        "regionRecording",
     ]
 
     function labelFor(id) {
@@ -42,6 +44,8 @@ GridLayout {
             return "Record";
         if (id === "lock")
             return "Lock";
+        if (id === "regionRecording")
+            return "Record area";
         return id;
     }
 
@@ -64,6 +68,8 @@ GridLayout {
             return "radio_button_checked";
         if (id === "lock")
             return "lock";
+        if (id === "regionRecording")
+            return "crop_free";
         return "toggle_on";
     }
 
@@ -86,6 +92,8 @@ GridLayout {
             return actions.recordingStatus;
         if (id === "lock")
             return "Screenshot clock";
+        if (id === "regionRecording")
+            return actions.regionRecordingStatus;
         return "";
     }
 
@@ -108,6 +116,8 @@ GridLayout {
             return actions.recordingAvailable;
         if (id === "lock")
             return actions.lockAvailable;
+        if (id === "regionRecording")
+            return actions.regionRecordingAvailable;
         return false;
     }
 
@@ -128,6 +138,8 @@ GridLayout {
             return false;
         if (id === "recording")
             return actions.recordingActive;
+        if (id === "regionRecording")
+            return actions.regionRecordingActive;
         return false;
     }
 
@@ -150,6 +162,12 @@ GridLayout {
             actions.toggleRecording();
         else if (id === "lock")
             actions.lockScreen();
+        else if (id === "regionRecording") {
+            if (actions.regionRecordingActive)
+                actions.toggleRegionRecording();
+            else
+                root.startRegionRecordingRequested();
+        }
     }
 
     Repeater {
