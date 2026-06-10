@@ -2,9 +2,12 @@ export function parseCaptureToolProbe(text) {
   const tools = {
     grim: false,
     niri: false,
+    notifySend: false,
+    pactl: false,
     slurp: false,
     wlCopy: false,
     wfRecorder: false,
+    wpctl: false,
   };
 
   for (const rawLine of String(text ?? "").split("\n")) {
@@ -15,12 +18,18 @@ export function parseCaptureToolProbe(text) {
       tools.grim = available;
     else if (name === "niri")
       tools.niri = available;
+    else if (name === "notify-send")
+      tools.notifySend = available;
+    else if (name === "pactl")
+      tools.pactl = available;
     else if (name === "slurp")
       tools.slurp = available;
     else if (name === "wl-copy")
       tools.wlCopy = available;
     else if (name === "wf-recorder")
       tools.wfRecorder = available;
+    else if (name === "wpctl")
+      tools.wpctl = available;
   }
 
   return tools;
@@ -31,6 +40,10 @@ export function screenshotAvailable(tools) {
 }
 
 export function recordingAvailable(tools) {
+  return currentOutputRecordingAvailable(tools) || regionRecordingAvailable(tools);
+}
+
+export function currentOutputRecordingAvailable(tools) {
   return tools.niri === true && tools.wfRecorder === true;
 }
 
@@ -38,11 +51,35 @@ export function regionRecordingAvailable(tools) {
   return tools.slurp === true && tools.wfRecorder === true;
 }
 
+export function recordingModeAvailable(mode, tools) {
+  if (mode === "region")
+    return regionRecordingAvailable(tools);
+  if (mode === "output")
+    return currentOutputRecordingAvailable(tools);
+  return false;
+}
+
+export function parseAudioMonitorSource(text) {
+  return String(text ?? "").split("\n").map(line => line.trim()).find(line => line.length > 0) ?? "";
+}
+
+export function recordingAudioAvailable(audioMonitorSource) {
+  return parseAudioMonitorSource(audioMonitorSource).length > 0;
+}
+
 export function captureToolProbeCommand() {
   return [
     "sh",
     "-c",
-    "for tool in grim niri slurp wl-copy wf-recorder; do command -v \"$tool\" >/dev/null 2>&1 && echo \"$tool=1\" || echo \"$tool=0\"; done",
+    "for tool in grim niri notify-send pactl slurp wl-copy wf-recorder wpctl; do command -v \"$tool\" >/dev/null 2>&1 && echo \"$tool=1\" || echo \"$tool=0\"; done",
+  ];
+}
+
+export function audioMonitorSourceCommand() {
+  return [
+    "bash",
+    "-lc",
+    "set -euo pipefail\nsink=\"$(pactl get-default-sink 2>/dev/null)\"\n[ -n \"$sink\" ]\nmonitor=\"$sink.monitor\"\npactl list sources short | cut -f2 | grep -Fx \"$monitor\"",
   ];
 }
 
@@ -54,19 +91,45 @@ export function screenshotClipboardCommand() {
   ];
 }
 
-export function recordingStartCommand() {
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, "'\\''")}'`;
+}
+
+function recordingStartScript({ mode = "output", audioEnabled = false, audioMonitorSource = "" } = {}) {
+  const normalizedMode = mode === "region" ? "region" : "output";
+  const audioSource = parseAudioMonitorSource(audioMonitorSource);
+  const audioArg = audioEnabled && audioSource.length > 0 ? ` --audio=${shellQuote(audioSource)}` : "";
+  const basename = normalizedMode === "region" ? "recording-region" : "recording";
+  const target = normalizedMode === "region"
+    ? `geometry="$(slurp)"
+[ -n "$geometry" ]
+printf 'file=%s\\n' "$file"
+exec wf-recorder -g "$geometry"${audioArg} -f "$file"`
+    : `output="$(niri msg --json focused-output | sed -n 's/.*"name":"\\([^"]*\\)".*/\\1/p')"
+[ -n "$output" ]
+printf 'file=%s\\n' "$file"
+exec wf-recorder -o "$output"${audioArg} -f "$file"`;
+
+  return `set -euo pipefail
+dir="$HOME/Videos/Screen Recordings"
+mkdir -p "$dir"
+file="$dir/${basename}-$(date +%Y%m%d-%H%M%S).mp4"
+${target}`;
+}
+
+export function recordingStartCommand(options = {}) {
   return [
     "bash",
     "-lc",
-    "set -euo pipefail\ndir=\"$HOME/Videos/Screen Recordings\"\nmkdir -p \"$dir\"\nfile=\"$dir/recording-$(date +%Y%m%d-%H%M%S).mp4\"\noutput=\"$(niri msg --json focused-output | sed -n 's/.*\"name\":\"\\([^\"]*\\)\".*/\\1/p')\"\n[ -n \"$output\" ]\nwf-recorder -o \"$output\" -f \"$file\"",
+    recordingStartScript({ ...options, mode: options.mode ?? "output" }),
   ];
 }
 
-export function regionRecordingStartCommand() {
+export function regionRecordingStartCommand(options = {}) {
   return [
     "bash",
     "-lc",
-    "set -euo pipefail\ndir=\"$HOME/Videos/Screen Recordings\"\nmkdir -p \"$dir\"\nfile=\"$dir/recording-region-$(date +%Y%m%d-%H%M%S).mp4\"\ngeometry=\"$(slurp)\"\n[ -n \"$geometry\" ]\nexec wf-recorder -g \"$geometry\" -f \"$file\"",
+    recordingStartScript({ ...options, mode: "region" }),
   ];
 }
 
@@ -74,7 +137,15 @@ export function regionRecordingMonitorCommand() {
   return [
     "bash",
     "-lc",
-    "pgrep -x slurp >/dev/null 2>&1 || pgrep -x wf-recorder >/dev/null 2>&1",
+    "if pgrep -x wf-recorder >/dev/null 2>&1; then echo recording; elif pgrep -x slurp >/dev/null 2>&1; then echo selecting; else exit 1; fi",
+  ];
+}
+
+export function recordingStopMonitorCommand() {
+  return [
+    "bash",
+    "-lc",
+    "pgrep -x wf-recorder >/dev/null 2>&1 || pgrep -x slurp >/dev/null 2>&1",
   ];
 }
 
@@ -84,4 +155,24 @@ export function recordingStopCommand() {
     "-lc",
     "pkill -INT wf-recorder >/dev/null 2>&1 || true\npkill -TERM slurp >/dev/null 2>&1 || true",
   ];
+}
+
+export function reduceRecordingState(state, event) {
+  if (state === "idle" && event === "startRegion")
+    return "selectingRegion";
+  if (state === "selectingRegion" && event === "regionSelected")
+    return "recordingRegion";
+  if (state === "idle" && event === "startOutput")
+    return "recordingOutput";
+  if ((state === "recordingRegion" || state === "recordingOutput") && event === "stop")
+    return "stopping";
+  if ((state === "recordingRegion" || state === "recordingOutput") && event === "backendExited")
+    return "idle";
+  if (state === "stopping" && event === "stopped")
+    return "idle";
+  if (state === "selectingRegion" && event === "cancel")
+    return "idle";
+  if (event === "fail")
+    return "error";
+  return state;
 }

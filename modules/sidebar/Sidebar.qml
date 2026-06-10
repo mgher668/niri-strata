@@ -17,11 +17,13 @@ Scope {
     required property var audioService
     required property var mediaService
 
+    property bool recordingPanelOpen: false
+
     Timer {
-        id: startRegionRecordingTimer
+        id: startRecordingTimer
         interval: 250
         repeat: false
-        onTriggered: root.systemActions.toggleRegionRecording()
+        onTriggered: root.systemActions.startRecording()
     }
 
     Variants {
@@ -217,9 +219,22 @@ Scope {
                                 QuickToggleGrid {
                                     Layout.fillWidth: true
                                     actions: root.systemActions
-                                    onStartRegionRecordingRequested: {
+                                    onRecordingSettingsRequested: root.recordingPanelOpen = true
+                                    onRecordingStartRequested: {
+                                        root.recordingPanelOpen = false;
                                         root.controller.close();
-                                        startRegionRecordingTimer.restart();
+                                        startRecordingTimer.restart();
+                                    }
+                                }
+
+                                Loader {
+                                    Layout.fillWidth: true
+                                    active: root.recordingPanelOpen
+                                    visible: active
+
+                                    sourceComponent: RecordingPanel {
+                                        actions: root.systemActions
+                                        onCloseRequested: root.recordingPanelOpen = false
                                     }
                                 }
 

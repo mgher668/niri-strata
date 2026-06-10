@@ -62,11 +62,18 @@ import {
 } from "./lib/night-mode-core.mjs";
 
 import {
+  audioMonitorSourceCommand,
   captureToolProbeCommand,
+  currentOutputRecordingAvailable,
   parseCaptureToolProbe,
+  parseAudioMonitorSource,
+  recordingAudioAvailable,
   recordingAvailable,
+  recordingModeAvailable,
   recordingStartCommand,
   recordingStopCommand,
+  recordingStopMonitorCommand,
+  reduceRecordingState,
   regionRecordingAvailable,
   regionRecordingMonitorCommand,
   regionRecordingStartCommand,
@@ -501,25 +508,41 @@ test("generates wl-gammarelay-rs busctl commands for per-output temperature", ()
   ]);
 });
 
-test("generates capture commands for screenshot clipboard and region recording", () => {
-  const tools = parseCaptureToolProbe("grim=1\nniri=1\nslurp=1\nwl-copy=1\nwf-recorder=0\n");
+test("generates capture commands for screenshot clipboard and unified recording", () => {
+  const tools = parseCaptureToolProbe("grim=1\nniri=1\nnotify-send=1\npactl=1\nslurp=1\nwl-copy=1\nwf-recorder=0\nwpctl=1\n");
 
   assert.deepEqual(tools, {
     grim: true,
     niri: true,
+    notifySend: true,
+    pactl: true,
     slurp: true,
     wlCopy: true,
     wfRecorder: false,
+    wpctl: true,
   });
   assert.equal(screenshotAvailable(tools), true);
   assert.equal(recordingAvailable(tools), false);
   assert.equal(recordingAvailable({ ...tools, wfRecorder: true }), true);
+  assert.equal(currentOutputRecordingAvailable(tools), false);
+  assert.equal(currentOutputRecordingAvailable({ ...tools, wfRecorder: true }), true);
   assert.equal(regionRecordingAvailable(tools), false);
   assert.equal(regionRecordingAvailable({ ...tools, wfRecorder: true }), true);
+  assert.equal(recordingModeAvailable("output", { ...tools, wfRecorder: true }), true);
+  assert.equal(recordingModeAvailable("region", { ...tools, wfRecorder: true }), true);
+  assert.equal(recordingModeAvailable("unknown", { ...tools, wfRecorder: true }), false);
+  assert.equal(parseAudioMonitorSource("\nalsa_output.example.monitor\n"), "alsa_output.example.monitor");
+  assert.equal(recordingAudioAvailable("alsa_output.example.monitor"), true);
+  assert.equal(recordingAudioAvailable(""), false);
   assert.deepEqual(captureToolProbeCommand(), [
     "sh",
     "-c",
-    "for tool in grim niri slurp wl-copy wf-recorder; do command -v \"$tool\" >/dev/null 2>&1 && echo \"$tool=1\" || echo \"$tool=0\"; done",
+    "for tool in grim niri notify-send pactl slurp wl-copy wf-recorder wpctl; do command -v \"$tool\" >/dev/null 2>&1 && echo \"$tool=1\" || echo \"$tool=0\"; done",
+  ]);
+  assert.deepEqual(audioMonitorSourceCommand(), [
+    "bash",
+    "-lc",
+    "set -euo pipefail\nsink=\"$(pactl get-default-sink 2>/dev/null)\"\n[ -n \"$sink\" ]\nmonitor=\"$sink.monitor\"\npactl list sources short | cut -f2 | grep -Fx \"$monitor\"",
   ]);
   assert.match(recordingStopCommand().join("\n"), /pkill -INT wf-recorder/);
   assert.match(recordingStopCommand().join("\n"), /pkill -TERM slurp/);
@@ -527,11 +550,23 @@ test("generates capture commands for screenshot clipboard and region recording",
   assert.match(screenshotClipboardCommand().join("\n"), /wl-copy --type image\/png < "\$file"/);
   assert.match(screenshotClipboardCommand().join("\n"), /\) >\/dev\/null 2>&1 <\/dev\/null &/);
   assert.match(recordingStartCommand().join("\n"), /niri msg --json focused-output/);
-  assert.match(recordingStartCommand().join("\n"), /wf-recorder -o "\$output" -f "\$file"/);
+  assert.match(recordingStartCommand().join("\n"), /printf 'file=%s\\n' "\$file"/);
+  assert.match(recordingStartCommand().join("\n"), /exec wf-recorder -o "\$output" -f "\$file"/);
+  assert.match(recordingStartCommand({ audioEnabled: true, audioMonitorSource: "alsa_output.example.monitor" }).join("\n"), /--audio='alsa_output\.example\.monitor'/);
   assert.match(regionRecordingStartCommand().join("\n"), /geometry="\$\(slurp\)"/);
   assert.match(regionRecordingStartCommand().join("\n"), /exec wf-recorder -g "\$geometry" -f "\$file"/);
-  assert.match(regionRecordingMonitorCommand().join("\n"), /pgrep -x slurp/);
   assert.match(regionRecordingMonitorCommand().join("\n"), /pgrep -x wf-recorder/);
+  assert.match(regionRecordingMonitorCommand().join("\n"), /pgrep -x slurp/);
+  assert.match(recordingStopMonitorCommand().join("\n"), /pgrep -x wf-recorder/);
+  assert.match(recordingStopMonitorCommand().join("\n"), /pgrep -x slurp/);
+  assert.equal(reduceRecordingState("idle", "startRegion"), "selectingRegion");
+  assert.equal(reduceRecordingState("selectingRegion", "regionSelected"), "recordingRegion");
+  assert.equal(reduceRecordingState("idle", "startOutput"), "recordingOutput");
+  assert.equal(reduceRecordingState("recordingOutput", "stop"), "stopping");
+  assert.equal(reduceRecordingState("recordingRegion", "backendExited"), "idle");
+  assert.equal(reduceRecordingState("stopping", "stopped"), "idle");
+  assert.equal(reduceRecordingState("selectingRegion", "cancel"), "idle");
+  assert.equal(reduceRecordingState("recordingRegion", "fail"), "error");
 });
 
 test("uses PopupWindow anchors for bar popups instead of hand-positioned panel windows", async () => {
@@ -999,6 +1034,7 @@ test("wires quick toggles and low-risk system cards through sidebar services", a
   const brightness = await readFile(join(root, "../modules/services/Brightness.qml"), "utf8");
   const nightMode = await readFile(join(root, "../modules/services/NightMode.qml"), "utf8");
   const quickToggles = await readFile(join(root, "../modules/sidebar/QuickToggleGrid.qml"), "utf8");
+  const recordingPanel = await readFile(join(root, "../modules/sidebar/RecordingPanel.qml"), "utf8");
   const resourceCard = await readFile(join(root, "../modules/sidebar/ResourceCard.qml"), "utf8");
   const powerSummary = await readFile(join(root, "../modules/sidebar/PowerSummary.qml"), "utf8");
 
@@ -1033,11 +1069,11 @@ test("wires quick toggles and low-risk system cards through sidebar services", a
     "screenshot",
     "recording",
     "lock",
-    "regionRecording",
   ]) {
     assert.match(quickToggles, new RegExp(`"${id}"`));
   }
-  assert.match(quickToggles, /"lock"[\s\S]*"regionRecording"/);
+  assert.doesNotMatch(quickToggles, /"regionRecording"/);
+  assert.match(quickToggles, /"recording"[\s\S]*"lock"/);
 
   assert.match(actions, /readonly property bool bluetoothAvailable:\s*bluetoothService\.available/);
   assert.match(actions, /readonly property bool microphoneAvailable:\s*audioService\.inputAvailable/);
@@ -1060,37 +1096,70 @@ test("wires quick toggles and low-risk system cards through sidebar services", a
   assert.match(actions, /readonly property bool screenshotAvailable:\s*captureService\.screenshotAvailable/);
   assert.match(actions, /readonly property bool screenshotBusy:\s*captureService\.screenshotBusy/);
   assert.match(actions, /readonly property bool recordingActive:\s*captureService\.recordingActive/);
+  assert.match(actions, /readonly property bool currentOutputRecordingAvailable:\s*captureService\.currentOutputRecordingAvailable/);
+  assert.match(actions, /readonly property bool recordingAudioAvailable:\s*captureService\.recordingAudioAvailable/);
+  assert.match(actions, /readonly property bool recordingAudioEnabled:\s*captureService\.recordingAudioEnabled/);
+  assert.match(actions, /readonly property string recordingDegradedReason:\s*captureService\.recordingDegradedReason/);
   assert.match(actions, /readonly property bool regionRecordingAvailable:\s*captureService\.regionRecordingAvailable/);
   assert.match(actions, /readonly property string regionRecordingStatus:\s*captureService\.regionRecordingStatus/);
   assert.match(actions, /readonly property bool regionRecordingActive:\s*captureService\.regionRecordingActive/);
   assert.match(actions, /function takeScreenshot\(\)[\s\S]*captureService\.takeScreenshot\(\)/);
   assert.match(actions, /function toggleRecording\(\)[\s\S]*captureService\.toggleRecording\(\)/);
-  assert.match(actions, /function toggleRegionRecording\(\)[\s\S]*captureService\.toggleRegionRecording\(\)/);
-  assert.match(quickToggles, /if \(id === "regionRecording"\)\s*return "Record area"/);
-  assert.match(quickToggles, /if \(id === "regionRecording"\)\s*return actions\.regionRecordingStatus/);
-  assert.match(quickToggles, /signal startRegionRecordingRequested\(\)/);
-  assert.match(quickToggles, /if \(actions\.regionRecordingActive\)[\s\S]*actions\.toggleRegionRecording\(\)/);
-  assert.match(quickToggles, /root\.startRegionRecordingRequested\(\)/);
-  assert.match(sidebar, /id:\s*startRegionRecordingTimer[\s\S]*interval:\s*250[\s\S]*root\.systemActions\.toggleRegionRecording\(\)/);
-  assert.match(sidebar, /onStartRegionRecordingRequested:[\s\S]*root\.controller\.close\(\)[\s\S]*startRegionRecordingTimer\.restart\(\)/);
+  assert.match(actions, /function startRecording\(\)[\s\S]*captureService\.startRecording\(\)/);
+  assert.match(actions, /function stopRecording\(\)[\s\S]*captureService\.stopRecording\(\)/);
+  assert.match(actions, /function setRecordingMode\(mode\)[\s\S]*captureService\.setRecordingMode\(mode\)/);
+  assert.match(actions, /function setRecordingAudioEnabled\(enabled\)[\s\S]*captureService\.setRecordingAudioEnabled\(enabled\)/);
+  assert.match(actions, /function recordingModeAvailable\(mode\)[\s\S]*captureService\.recordingModeAvailable\(mode\)/);
+  assert.match(quickToggles, /signal recordingStartRequested\(\)/);
+  assert.match(quickToggles, /signal recordingSettingsRequested\(\)/);
+  assert.match(quickToggles, /if \(id === "recording"\)\s*return "Record"/);
+  assert.match(quickToggles, /if \(actions\.recordingActive\)[\s\S]*actions\.stopRecording\(\)/);
+  assert.match(quickToggles, /root\.recordingStartRequested\(\)/);
+  assert.match(quickToggles, /root\.recordingSettingsRequested\(\)/);
+  assert.match(quickToggles, /acceptedButtons:\s*Qt\.LeftButton \| Qt\.RightButton/);
+  assert.match(quickToggles, /onClicked:\s*function\(mouse\)/);
+  assert.match(quickToggles, /mouse\.button === Qt\.RightButton/);
+  assert.match(sidebar, /property bool recordingPanelOpen:\s*false/);
+  assert.match(sidebar, /id:\s*startRecordingTimer[\s\S]*interval:\s*250[\s\S]*root\.systemActions\.startRecording\(\)/);
+  assert.match(sidebar, /onRecordingSettingsRequested:\s*root\.recordingPanelOpen = true/);
+  assert.match(sidebar, /onRecordingStartRequested:[\s\S]*root\.recordingPanelOpen = false[\s\S]*root\.controller\.close\(\)[\s\S]*startRecordingTimer\.restart\(\)/);
+  assert.match(sidebar, /RecordingPanel\s*\{[\s\S]*actions:\s*root\.systemActions/);
+  assert.match(recordingPanel, /actions\.setRecordingMode\("region"\)/);
+  assert.match(recordingPanel, /actions\.setRecordingMode\("output"\)/);
+  assert.match(recordingPanel, /actions\.setRecordingAudioEnabled\(!actions\.recordingAudioEnabled\)/);
+  assert.doesNotMatch(recordingPanel, /startRecordingRequested|root\.startRecordingRequested|actions\.stopRecording\(\)|play_arrow/);
   assert.match(quickToggles, /if \(id === "screenshot"\)\s*return false/);
   assert.match(capture, /readonly property bool screenshotAvailable:\s*tools\.niri && tools\.wlCopy/);
   assert.match(capture, /readonly property string screenshotStatus:\s*screenshotAvailable \? "Clipboard" : "Unavailable"/);
   assert.match(capture, /niri msg action screenshot --path \\?"\$file\\?"/);
   assert.match(capture, /wl-copy --type image\/png < \\?"\$file\\?"/);
-  assert.match(capture, /readonly property bool recordingAvailable:\s*tools\.niri && tools\.wfRecorder/);
-  assert.match(capture, /recordingAvailable \? "Focused output" : "Unavailable"/);
+  assert.match(capture, /readonly property bool currentOutputRecordingAvailable:\s*tools\.niri && tools\.wfRecorder/);
+  assert.match(capture, /readonly property bool recordingAvailable:\s*currentOutputRecordingAvailable \|\| regionRecordingAvailable/);
+  assert.match(capture, /property string recordingMode:\s*"output"/);
+  assert.match(capture, /property bool recordingAudioEnabled:\s*false/);
+  assert.match(capture, /property string recordingDegradedReason:\s*""/);
+  assert.match(capture, /property string recordingStopSourceState:\s*""/);
+  assert.match(capture, /recordingAudioEnabled && !recordingAudioAvailable/);
+  assert.match(capture, /Recording audio unavailable/);
+  assert.doesNotMatch(capture, /Recording started|Select a region/);
+  assert.match(capture, /pactl get-default-sink/);
   assert.match(capture, /niri msg --json focused-output/);
-  assert.match(capture, /wf-recorder -o \\?"\$output\\?" -f \\?"\$file\\?"/);
+  assert.match(capture, /const command = recordingStartCommand\(\)/);
+  assert.match(capture, /recordingMode === "region"[\s\S]*Quickshell\.execDetached\(command\)/);
+  assert.match(capture, /startRecordingProcess\.command = command/);
+  assert.match(capture, /exec wf-recorder -o \\?"\$output\\?"\$\{audioArg\} -f \\?"\$file\\?"/);
   assert.match(capture, /readonly property bool regionRecordingAvailable:\s*tools\.slurp && tools\.wfRecorder/);
-  assert.match(capture, /regionRecordingAvailable \? "Select region" : "Unavailable"/);
-  assert.match(capture, /readonly property var regionRecordingCommand:/);
-  assert.match(capture, /Quickshell\.execDetached\(regionRecordingCommand\)/);
   assert.match(capture, /geometry=\\?"\$\(slurp\)\\?"/);
-  assert.match(capture, /exec wf-recorder -g \\?"\$geometry\\?" -f \\?"\$file\\?"/);
+  assert.match(capture, /exec wf-recorder -g \\?"\$geometry\\?"\$\{audioArg\} -f \\?"\$file\\?"/);
   assert.match(capture, /id:\s*regionRecordingMonitorTimer[\s\S]*interval:\s*500/);
-  assert.match(capture, /pgrep -x slurp[\s\S]*pgrep -x wf-recorder/);
-  assert.match(capture, /recordingActive = false[\s\S]*stopRecordingProcess\.running = true/);
+  assert.match(capture, /pgrep -x wf-recorder[\s\S]*pgrep -x slurp/);
+  assert.match(capture, /stoppedSelection[\s\S]*Recording cancelled/);
+  assert.match(capture, /recordingState = "stopping"[\s\S]*stopRecordingProcess\.running = true/);
+  assert.match(capture, /id:\s*recordingStopReconcileTimer[\s\S]*interval:\s*500/);
+  assert.match(capture, /function refreshRecordingStopState\(\)[\s\S]*recordingStopMonitorProcess\.running = true/);
+  assert.match(capture, /id:\s*recordingStopMonitorProcess[\s\S]*pgrep -x wf-recorder[\s\S]*pgrep -x slurp/);
+  assert.match(capture, /function completeStoppedRecording\(\)[\s\S]*recordingState = "idle"/);
+  assert.match(capture, /recordingState === "recordingRegion"[\s\S]*completeStoppedRecording\(\)/);
   assert.match(capture, /pkill -INT wf-recorder/);
   assert.match(capture, /pkill -TERM slurp/);
   assert.match(nightMode, /command:\s*\["busctl", "--user", "introspect", "--xml-interface", "rs\.wl-gammarelay", "\/outputs"\]/);
@@ -1278,6 +1347,8 @@ test("wires system controls with confirmation-gated session actions", async () =
   assert.match(actions, /required property var captureService/);
   assert.match(actions, /readonly property string screenshotStatus:\s*captureService\.screenshotStatus/);
   assert.match(actions, /readonly property string recordingStatus:\s*captureService\.recordingStatus/);
+  assert.match(actions, /readonly property string recordingMode:\s*captureService\.recordingMode/);
+  assert.match(actions, /readonly property bool recordingAudioEnabled:\s*captureService\.recordingAudioEnabled/);
   assert.match(actions, /readonly property string regionRecordingStatus:\s*captureService\.regionRecordingStatus/);
   assert.match(actions, /property string pendingSessionAction:\s*""/);
   assert.match(actions, /readonly property bool recordingActive:\s*captureService\.recordingActive/);
@@ -1304,9 +1375,12 @@ test("wires system controls with confirmation-gated session actions", async () =
   assert.match(panel, /detail:\s*actions\.recordingStatus/);
   assert.match(panel, /actions\.toggleRecording\(\)/);
   assert.match(capture, /property bool screenshotBusy:\s*false/);
-  assert.match(capture, /property bool regionRecordingActive:\s*false/);
+  assert.match(capture, /property string recordingState:\s*"idle"/);
+  assert.match(capture, /readonly property bool regionRecordingActive:\s*recordingState === "selectingRegion" \|\| recordingState === "recordingRegion"/);
   assert.match(capture, /function takeScreenshot\(\)/);
   assert.match(capture, /function toggleRecording\(\)/);
+  assert.match(capture, /function startRecording\(\)/);
+  assert.match(capture, /function stopRecording\(\)/);
   assert.match(capture, /function toggleRegionRecording\(\)/);
   assert.match(materialSlider, /signal setValue\(real value\)/);
   assert.match(materialSlider, /property real from:\s*0/);

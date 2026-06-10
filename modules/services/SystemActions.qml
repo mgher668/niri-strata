@@ -44,7 +44,14 @@ Item {
     readonly property string screenshotStatus: captureService.screenshotStatus
     readonly property bool screenshotBusy: captureService.screenshotBusy
     readonly property bool recordingAvailable: captureService.recordingAvailable
+    readonly property bool currentOutputRecordingAvailable: captureService.currentOutputRecordingAvailable
     readonly property string recordingStatus: captureService.recordingStatus
+    readonly property string recordingMode: captureService.recordingMode
+    readonly property bool recordingAudioAvailable: captureService.recordingAudioAvailable
+    readonly property bool recordingAudioEnabled: captureService.recordingAudioEnabled
+    readonly property string recordingDegradedReason: captureService.recordingDegradedReason
+    readonly property string recordingSavePath: captureService.recordingSavePath
+    readonly property string recordingLastError: captureService.recordingLastError
     readonly property bool regionRecordingAvailable: captureService.regionRecordingAvailable
     readonly property string regionRecordingStatus: captureService.regionRecordingStatus
     readonly property bool regionRecordingActive: captureService.regionRecordingActive
@@ -96,8 +103,28 @@ Item {
         captureService.toggleRecording();
     }
 
+    function startRecording() {
+        captureService.startRecording();
+    }
+
+    function stopRecording() {
+        captureService.stopRecording();
+    }
+
     function toggleRegionRecording() {
         captureService.toggleRegionRecording();
+    }
+
+    function setRecordingMode(mode) {
+        captureService.setRecordingMode(mode);
+    }
+
+    function setRecordingAudioEnabled(enabled) {
+        captureService.setRecordingAudioEnabled(enabled);
+    }
+
+    function recordingModeAvailable(mode) {
+        return captureService.recordingModeAvailable(mode);
     }
 
     function setPowerProfile(profile) {
