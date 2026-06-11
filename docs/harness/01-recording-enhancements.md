@@ -95,6 +95,8 @@ Acceptance:
 
 ## Phase 5: manual smoke
 
+Status: Not completed. Deferred until after the next feature pass.
+
 Manual checks:
 
 - Start and stop current-screen recording.

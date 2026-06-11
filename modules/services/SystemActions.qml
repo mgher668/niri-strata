@@ -168,6 +168,16 @@ Item {
         Quickshell.execDetached(command);
     }
 
+    function runConfirmedSessionAction(action) {
+        const command = sessionCommand(action);
+        if (command.length === 0)
+            return;
+
+        pendingSessionAction = "";
+        confirmTimer.stop();
+        Quickshell.execDetached(command);
+    }
+
     function cancelSessionAction() {
         pendingSessionAction = "";
         confirmTimer.stop();

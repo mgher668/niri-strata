@@ -9,6 +9,7 @@ import "./modules/common/"
 import "./modules/bar/"
 import "./modules/services/"
 import "./modules/sidebar/"
+import "./modules/launcher/"
 
 ShellRoot{
     id: root
@@ -98,6 +99,17 @@ ShellRoot{
         niriState: niriState
     }
 
+    AppSearch {
+        id: appSearch
+    }
+
+    CommandPalette {
+        id: commandPalette
+        appSearch: appSearch
+        systemActions: systemActions
+        sidebarController: sidebarState
+    }
+
     TrayState {
         id: trayStateService
     }
@@ -109,6 +121,15 @@ ShellRoot{
         function open(): void { sidebarState.openForOutput(""); }
         function close(): void { sidebarState.close(); }
         function isOpen(): bool { return sidebarState.open; }
+    }
+
+    IpcHandler {
+        target: "launcher"
+
+        function toggle(): void { commandPalette.toggle(); }
+        function open(): void { commandPalette.openPalette(); }
+        function close(): void { commandPalette.close(); }
+        function isOpen(): bool { return commandPalette.open; }
     }
 
     IpcHandler {
@@ -149,6 +170,11 @@ ShellRoot{
         bluetoothService: bluetooth
         audioService: audio
         mediaService: media
+    }
+
+    Launcher {
+        palette: commandPalette
+        niriState: niriState
     }
 
     NotificationToast {
