@@ -1,24 +1,22 @@
 import QtQuick
 import Quickshell
-import Quickshell.Io
 
 Item {
     id: root
 
     required property var niri
-    readonly property int cliPollInterval: 1500
 
-    property var cliWorkspaces: []
-    property var cliWindows: []
-    property var cliFocusedWindow: null
-    property var cliFocusedOutput: null
-    property bool cliReady: cliWorkspaces.length > 0
+    property var eventWorkspaces: []
+    property var eventWindows: []
+    property var eventFocusedOutput: null
 
     readonly property var outputOrder: Quickshell.screens.map(screen => screen.name)
-    readonly property var rawWindows: cliReady ? cliWindows : readField(niri, "windows", "windows", [])
-    readonly property var rawFocusedWindow: cliFocusedWindow ?? readField(niri, "focused_window", "focusedWindow", null)
-    readonly property var rawFocusedOutput: cliFocusedOutput ?? readField(niri, "focused_output", "focusedOutput", null)
-    readonly property var rawWorkspaces: cliReady ? cliWorkspaces : readField(niri, "workspaces", "workspaces", [])
+    readonly property var rawWindows: eventWindows.length > 0 ? eventWindows : toArray(readField(niri, "windows", "windows", []))
+    readonly property var rawFocusedWindow: readField(niri, "focused_window", "focusedWindow", null)
+        ?? rawWindows.find(window => !!readField(window, "is_focused", "isFocused", false))
+        ?? null
+    readonly property var rawFocusedOutput: eventFocusedOutput
+    readonly property var rawWorkspaces: eventWorkspaces.length > 0 ? eventWorkspaces : toArray(readField(niri, "workspaces", "workspaces", []))
     readonly property var windows: normalizeWindows(rawWindows)
     readonly property var focusedWindow: normalizeFocusedWindow(rawFocusedWindow)
     readonly property var focusedOutput: normalizeFocusedOutput(rawFocusedOutput)
@@ -35,6 +33,12 @@ Item {
         if (!value) return [];
         if (Array.isArray(value)) return value;
         if (value.values && Array.isArray(value.values)) return value.values;
+        if (typeof value.count === "number" && typeof value.get === "function") {
+            const result = [];
+            for (let i = 0; i < value.count; ++i)
+                result.push(value.get(i));
+            return result;
+        }
 
         const result = [];
         if (typeof value.length === "number") {
@@ -50,33 +54,144 @@ Item {
 
     function readField(object, snakeName, camelName, fallback) {
         if (!object) return fallback;
-        if (hasOwn(object, camelName)) return object[camelName];
-        if (hasOwn(object, snakeName)) return object[snakeName];
+        if (hasOwn(object, camelName) || object[camelName] !== undefined) return object[camelName];
+        if (hasOwn(object, snakeName) || object[snakeName] !== undefined) return object[snakeName];
         return fallback;
     }
 
-    function parseJson(text, fallback, label) {
-        const trimmed = String(text ?? "").trim();
-        if (trimmed.length === 0)
-            return fallback;
-
-        try {
-            return JSON.parse(trimmed);
-        } catch (error) {
-            console.warn(`Failed to parse niri ${label} JSON:`, error);
-            return fallback;
-        }
+    function copyObject(object) {
+        if (!object || typeof object !== "object")
+            return {};
+        return Object.assign({}, object);
     }
 
-    function refreshCliState() {
-        if (!workspacesProcess.running)
-            workspacesProcess.exec(["niri", "msg", "--json", "workspaces"]);
-        if (!windowsProcess.running)
-            windowsProcess.exec(["niri", "msg", "--json", "windows"]);
-        if (!focusedWindowProcess.running)
-            focusedWindowProcess.exec(["niri", "msg", "--json", "focused-window"]);
-        if (!focusedOutputProcess.running)
-            focusedOutputProcess.exec(["niri", "msg", "--json", "focused-output"]);
+    function setField(object, snakeName, camelName, value) {
+        object[snakeName] = value;
+        object[camelName] = value;
+    }
+
+    function itemId(item) {
+        return readField(item, "id", "id", null);
+    }
+
+    function updateWorkspace(id, updater) {
+        let changed = false;
+        const nextWorkspaces = eventWorkspaces.map(workspace => {
+            if (itemId(workspace) !== id)
+                return workspace;
+
+            const next = copyObject(workspace);
+            updater(next);
+            changed = true;
+            return next;
+        });
+
+        if (changed)
+            eventWorkspaces = nextWorkspaces;
+    }
+
+    function handleWorkspacesChanged(payload) {
+        eventWorkspaces = toArray(readField(payload, "workspaces", "workspaces", [])).map(workspace => copyObject(workspace));
+    }
+
+    function handleWorkspaceActivated(payload) {
+        const id = readField(payload, "id", "id", null);
+        const focused = !!readField(payload, "focused", "focused", false);
+        const activated = eventWorkspaces.find(workspace => itemId(workspace) === id);
+        if (!activated)
+            return;
+
+        const output = readField(activated, "output", "output", "");
+        eventWorkspaces = eventWorkspaces.map(workspace => {
+            const next = copyObject(workspace);
+            const isTarget = itemId(workspace) === id;
+            if (readField(workspace, "output", "output", "") === output)
+                setField(next, "is_active", "isActive", isTarget);
+            if (focused)
+                setField(next, "is_focused", "isFocused", isTarget);
+            return next;
+        });
+    }
+
+    function handleWorkspaceActiveWindowChanged(payload) {
+        const workspaceId = readField(payload, "workspace_id", "workspaceId", null);
+        const activeWindowId = readField(payload, "active_window_id", "activeWindowId", null);
+        updateWorkspace(workspaceId, workspace => setField(workspace, "active_window_id", "activeWindowId", activeWindowId));
+    }
+
+    function handleWorkspaceUrgencyChanged(payload) {
+        const id = readField(payload, "id", "id", null);
+        const urgent = !!readField(payload, "urgent", "urgent", false);
+        updateWorkspace(id, workspace => setField(workspace, "is_urgent", "isUrgent", urgent));
+    }
+
+    function handleWindowsChanged(payload) {
+        eventWindows = toArray(readField(payload, "windows", "windows", [])).map(window => copyObject(window));
+    }
+
+    function handleWindowOpenedOrChanged(payload) {
+        const window = copyObject(readField(payload, "window", "window", null));
+        const id = itemId(window);
+        if (id === null || id === undefined)
+            return;
+
+        const focused = !!readField(window, "is_focused", "isFocused", false);
+        const nextWindows = eventWindows.map(existing => {
+            const next = copyObject(existing);
+            if (itemId(existing) === id)
+                return window;
+            if (focused)
+                setField(next, "is_focused", "isFocused", false);
+            return next;
+        });
+
+        if (!nextWindows.some(existing => itemId(existing) === id))
+            nextWindows.push(window);
+
+        eventWindows = nextWindows;
+    }
+
+    function handleWindowClosed(payload) {
+        const id = readField(payload, "id", "id", null);
+        eventWindows = eventWindows.filter(window => itemId(window) !== id);
+    }
+
+    function handleWindowFocusChanged(payload) {
+        const id = readField(payload, "id", "id", null);
+        eventWindows = eventWindows.map(window => {
+            const next = copyObject(window);
+            setField(next, "is_focused", "isFocused", id !== null && id !== undefined && itemId(window) === id);
+            return next;
+        });
+    }
+
+    function handleOutputFocusChanged(payload) {
+        const output = readField(payload, "output", "output", null) ?? payload;
+        eventFocusedOutput = typeof output === "string" ? { name: output } : output;
+    }
+
+    function handleRawEvent(event) {
+        if (!event)
+            return;
+
+        if (event.WorkspacesChanged)
+            handleWorkspacesChanged(event.WorkspacesChanged);
+        else if (event.WorkspaceActivated)
+            handleWorkspaceActivated(event.WorkspaceActivated);
+        else if (event.WorkspaceActiveWindowChanged)
+            handleWorkspaceActiveWindowChanged(event.WorkspaceActiveWindowChanged);
+        else if (event.WorkspaceUrgencyChanged)
+            handleWorkspaceUrgencyChanged(event.WorkspaceUrgencyChanged);
+        else if (event.WindowsChanged)
+            handleWindowsChanged(event.WindowsChanged);
+        else if (event.WindowOpenedOrChanged)
+            handleWindowOpenedOrChanged(event.WindowOpenedOrChanged);
+        else if (event.WindowClosed)
+            handleWindowClosed(event.WindowClosed);
+        else if (event.WindowFocusChanged)
+            handleWindowFocusChanged(event.WindowFocusChanged);
+        else if (event.OutputFocusChanged)
+            handleOutputFocusChanged(event.OutputFocusChanged);
     }
 
     function normalizeWorkspace(raw) {
@@ -222,81 +337,42 @@ Item {
         Quickshell.execDetached(["niri", "msg", "action", "focus-workspace", workspaceReference(workspace)]);
     }
 
+    function focusWorkspaceByStep(step) {
+        const current = focusedWorkspace ?? activeWorkspace;
+        if (!current)
+            return;
+
+        const candidates = workspaces.filter(workspace => workspace.output === current.output);
+        const currentIndex = candidates.findIndex(workspace => workspace.id === current.id);
+        const nextIndex = currentIndex + step;
+        if (currentIndex < 0 || nextIndex < 0 || nextIndex >= candidates.length)
+            return;
+
+        focusWorkspace(candidates[nextIndex]);
+    }
+
     function focusWorkspaceUp() {
-        Quickshell.execDetached(["niri", "msg", "action", "focus-workspace-up"]);
+        focusWorkspaceByStep(-1);
     }
 
     function focusWorkspaceDown() {
-        Quickshell.execDetached(["niri", "msg", "action", "focus-workspace-down"]);
+        focusWorkspaceByStep(1);
     }
 
     function focusWindow(window) {
         if (!window || window.id === null || window.id === undefined)
             return;
+        if (niri && typeof niri.focusWindow === "function") {
+            niri.focusWindow(window.id);
+            return;
+        }
         Quickshell.execDetached(["niri", "msg", "action", "focus-window", "--id", String(window.id)]);
-    }
-
-    Component.onCompleted: refreshCliState()
-
-    Timer {
-        interval: root.cliPollInterval
-        running: true
-        repeat: true
-        onTriggered: root.refreshCliState()
     }
 
     Connections {
         target: root.niri
         function onRawEventReceived(event) {
-            root.refreshCliState();
-        }
-    }
-
-    Process {
-        id: workspacesProcess
-        stdout: StdioCollector {
-            id: workspacesStdout
-            waitForEnd: true
-        }
-        onExited: function(exitCode) {
-            if (exitCode === 0)
-                root.cliWorkspaces = root.parseJson(workspacesStdout.text, root.cliWorkspaces, "workspaces");
-        }
-    }
-
-    Process {
-        id: windowsProcess
-        stdout: StdioCollector {
-            id: windowsStdout
-            waitForEnd: true
-        }
-        onExited: function(exitCode) {
-            if (exitCode === 0)
-                root.cliWindows = root.parseJson(windowsStdout.text, root.cliWindows, "windows");
-        }
-    }
-
-    Process {
-        id: focusedWindowProcess
-        stdout: StdioCollector {
-            id: focusedWindowStdout
-            waitForEnd: true
-        }
-        onExited: function(exitCode) {
-            if (exitCode === 0)
-                root.cliFocusedWindow = root.parseJson(focusedWindowStdout.text, root.cliFocusedWindow, "focused-window");
-        }
-    }
-
-    Process {
-        id: focusedOutputProcess
-        stdout: StdioCollector {
-            id: focusedOutputStdout
-            waitForEnd: true
-        }
-        onExited: function(exitCode) {
-            if (exitCode === 0)
-                root.cliFocusedOutput = root.parseJson(focusedOutputStdout.text, root.cliFocusedOutput, "focused-output");
+            root.handleRawEvent(event);
         }
     }
 }

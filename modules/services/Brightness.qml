@@ -258,7 +258,14 @@ Item {
         return displays.find(display => display.bus === bus) ?? null;
     }
 
-    Component.onCompleted: refresh()
+    Component.onCompleted: startupRefreshTimer.start()
+
+    Timer {
+        id: startupRefreshTimer
+        interval: 3000
+        repeat: false
+        onTriggered: root.refresh()
+    }
 
     Timer {
         interval: 30000

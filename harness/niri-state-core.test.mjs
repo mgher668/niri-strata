@@ -602,10 +602,75 @@ test("filters workspace buttons by the bar screen output name", async () => {
   assert.match(workspaces, /state\.workspaces\.filter\(workspace => workspace\.output === outputName\)/);
 });
 
+test("uses event cached niri state instead of polling niri msg from the shell", async () => {
+  const niriState = await readFile(join(root, "../modules/services/NiriState.qml"), "utf8");
+
+  assert.match(niriState, /property var eventWorkspaces:\s*\[\]/);
+  assert.match(niriState, /property var eventWindows:\s*\[\]/);
+  assert.match(niriState, /function handleRawEvent\(event\)/);
+  assert.match(niriState, /event\.WorkspacesChanged/);
+  assert.match(niriState, /event\.WindowsChanged/);
+  assert.match(niriState, /event\.WindowFocusChanged/);
+  assert.match(niriState, /onRawEventReceived\(event\)[\s\S]*root\.handleRawEvent\(event\)/);
+  assert.doesNotMatch(niriState, /cliPollInterval|refreshCliState|cliWorkspaces|cliWindows|cliFocused/);
+  assert.doesNotMatch(niriState, /Process\s*\{/);
+  assert.doesNotMatch(niriState, /"niri",\s*"msg",\s*"--json",\s*"(workspaces|windows|focused-window|focused-output)"/);
+});
+
 test("keeps empty workspace labels unobstructed", async () => {
   const workspaces = await readFile(join(root, "../modules/bar/Workspaces.qml"), "utf8");
 
   assert.doesNotMatch(workspaces, /visible:\s*!active && !occupied && !urgent/);
+});
+
+test("lazily binds volume OSD layer windows to concrete outputs", async () => {
+  const volumeOsd = await readFile(join(root, "../modules/bar/VolumeOsd.qml"), "utf8");
+
+  assert.match(volumeOsd, /Variants\s*\{[\s\S]*model:\s*Quickshell\.screens/);
+  assert.match(volumeOsd, /delegate:\s*LazyLoader\s*\{[\s\S]*required property ShellScreen modelData/);
+  assert.match(volumeOsd, /active:\s*root\.service\.osdVisible && root\.service\.available/);
+  assert.match(volumeOsd, /component:\s*PanelWindow\s*\{[\s\S]*screen:\s*osdLoader\.modelData/);
+});
+
+test("keeps volume OSD silent while PipeWire initializes", async () => {
+  const audio = await readFile(join(root, "../modules/services/Audio.qml"), "utf8");
+
+  assert.match(audio, /property bool osdChangeNotificationsEnabled:\s*false/);
+  assert.match(audio, /showOnChange && osdChangeNotificationsEnabled && changed/);
+  assert.match(audio, /id:\s*osdStartupQuietTimer/);
+  assert.match(audio, /root\.osdVisible = false/);
+  assert.match(audio, /root\.osdChangeNotificationsEnabled = true/);
+});
+
+test("defers external service probes until after the first shell frame", async () => {
+  const services = {
+    capture: await readFile(join(root, "../modules/services/Capture.qml"), "utf8"),
+    wifi: await readFile(join(root, "../modules/services/Wifi.qml"), "utf8"),
+    brightness: await readFile(join(root, "../modules/services/Brightness.qml"), "utf8"),
+    nightMode: await readFile(join(root, "../modules/services/NightMode.qml"), "utf8"),
+    powerProfiles: await readFile(join(root, "../modules/services/PowerProfiles.qml"), "utf8"),
+  };
+
+  for (const source of Object.values(services))
+    assert.doesNotMatch(source, /Component\.onCompleted:\s*refresh\(\)/);
+
+  assert.match(services.capture, /Component\.onCompleted:\s*startupRefreshTimer\.start\(\)/);
+  assert.match(services.wifi, /startupScanTimer\.start\(\)/);
+  assert.match(services.wifi, /startupVpnTimer\.start\(\)/);
+  assert.match(services.brightness, /Component\.onCompleted:\s*startupRefreshTimer\.start\(\)/);
+  assert.match(services.nightMode, /Component\.onCompleted:\s*startupRefreshTimer\.start\(\)/);
+  assert.match(services.powerProfiles, /Component\.onCompleted:\s*startupRefreshTimer\.start\(\)/);
+});
+
+test("mounts overlay windows only when they are needed", async () => {
+  const shell = await readFile(join(root, "../shell.qml"), "utf8");
+
+  assert.doesNotMatch(shell, /overlaysMounted/);
+  assert.doesNotMatch(shell, /id:\s*overlayMountTimer/);
+  assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*sidebarState\.open[\s\S]*component:\s*Sidebar/);
+  assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*commandPalette\.open[\s\S]*component:\s*Launcher/);
+  assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*notifications\.popupCount > 0[\s\S]*component:\s*NotificationToast/);
+  assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*audio\.osdVisible[\s\S]*component:\s*VolumeOsd/);
 });
 
 test("enables QApplication and keeps tray right-clicks on menu display path", async () => {
@@ -642,14 +707,17 @@ test("enables QApplication and keeps tray right-clicks on menu display path", as
   assert.match(sysTray, /property var trayState:\s*null/);
   assert.match(sysTray, /property string outputName:\s*""/);
   assert.match(sysTray, /property bool barIconsVisible:\s*true/);
+  assert.match(sysTray, /property bool itemsReady:\s*false/);
+  assert.match(sysTray, /readonly property var items:\s*itemsReady \? SystemTray\.items\.values : \[\]/);
   assert.match(sysTray, /property var sortedItems:\s*\[\]/);
   assert.match(sysTray, /property var visibleItems:\s*\[\]/);
   assert.match(sysTray, /property var hiddenItems:\s*\[\]/);
   assert.match(sysTray, /Connections\s*\{[\s\S]*target:\s*root\.trayState \|\| null[\s\S]*function onBarIconsVisibleChanged\(\) \{[\s\S]*root\.refreshItems\(\);[\s\S]*\}/);
-  assert.match(sysTray, /Component\.onCompleted:\s*refreshItems\(\)/);
-  assert.match(sysTray, /onItemsChanged:\s*refreshItems\(\)/);
-  assert.match(sysTray, /onTrayStateChanged:\s*refreshItems\(\)/);
-  assert.match(sysTray, /onOutputNameChanged:\s*refreshItems\(\)/);
+  assert.match(sysTray, /Component\.onCompleted:\s*trayStartupTimer\.start\(\)/);
+  assert.match(sysTray, /id:\s*trayStartupTimer[\s\S]*interval:\s*900[\s\S]*root\.itemsReady = true;[\s\S]*root\.refreshItems\(\);/);
+  assert.match(sysTray, /onItemsChanged:\s*\{[\s\S]*if \(itemsReady\)[\s\S]*refreshItems\(\);[\s\S]*\}/);
+  assert.match(sysTray, /onTrayStateChanged:\s*\{[\s\S]*if \(itemsReady\)[\s\S]*refreshItems\(\);[\s\S]*\}/);
+  assert.match(sysTray, /onOutputNameChanged:\s*\{[\s\S]*if \(itemsReady\)[\s\S]*refreshItems\(\);[\s\S]*\}/);
   assert.match(sysTray, /function itemText\(item\)/);
   assert.match(sysTray, /function isPinned\(item\)/);
   assert.match(sysTray, /function sortItems\(sourceItems\)/);
@@ -787,7 +855,7 @@ test("wires sidebar shell through focused-output controller", async () => {
   assert.match(shell, /function close\(\):\s*void\s*\{\s*sidebarState\.close\(\);\s*\}/);
   assert.match(shell, /function isOpen\(\):\s*bool\s*\{\s*return sidebarState\.open;\s*\}/);
   assert.match(shell, /sidebarController:\s*sidebarState/);
-  assert.match(shell, /Sidebar\s*\{\s*controller:\s*sidebarState/s);
+  assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*sidebarState\.open[\s\S]*Sidebar\s*\{[\s\S]*controller:\s*shellRoot\.sidebarControllerService/s);
   assert.doesNotMatch(shell, /id:\s*sidebarController/);
   assert.doesNotMatch(shell, /sidebarController:\s*sidebarController/);
   assert.match(bar, /required property var sidebarController/);
@@ -980,9 +1048,9 @@ test("wires notification ownership into sidebar and focused-output toasts", asyn
   const icon = await readFile(join(root, "../modules/common/NotificationAppIcon.qml"), "utf8");
 
   assert.match(shell, /Notifications\s*\{\s*id:\s*notifications/s);
-  assert.match(shell, /notificationService:\s*notifications/);
+  assert.match(shell, /readonly property var notificationService:\s*notifications/);
   assert.match(shell, /NotificationToast\s*\{/);
-  assert.match(shell, /NotificationToast\s*\{[\s\S]*sidebarController:\s*sidebarState/);
+  assert.match(shell, /NotificationToast\s*\{[\s\S]*sidebarController:\s*shellRoot\.sidebarControllerService/);
   assert.match(notifications, /import Quickshell\.Services\.Notifications/);
   assert.match(notifications, /NotificationServer\s*\{/);
   assert.match(notifications, /property bool doNotDisturb:\s*false/);
@@ -1306,7 +1374,7 @@ test("wires MPRIS media panel through media service boundary", async () => {
   const panel = await readFile(join(root, "../modules/sidebar/MediaPanel.qml"), "utf8");
 
   assert.match(shell, /Media\s*\{\s*id:\s*media/s);
-  assert.match(shell, /mediaService:\s*media/);
+  assert.match(shell, /mediaService:\s*shellRoot\.mediaStatusService/);
   assert.match(sidebar, /required property var mediaService/);
   assert.match(sidebar, /MediaPanel\s*\{/);
   assert.match(media, /import Quickshell\.Services\.Mpris/);

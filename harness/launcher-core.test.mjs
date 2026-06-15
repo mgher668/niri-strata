@@ -220,19 +220,28 @@ test("wires launcher services and overlay through shell", async () => {
   assert.match(shell, /import "\.\/modules\/launcher\/"/);
   assert.match(shell, /AppSearch\s*\{\s*id:\s*appSearch/s);
   assert.match(shell, /CommandPalette\s*\{[\s\S]*appSearch:\s*appSearch[\s\S]*systemActions:\s*systemActions[\s\S]*sidebarController:\s*sidebarState/);
-  assert.match(shell, /Launcher\s*\{[\s\S]*palette:\s*commandPalette[\s\S]*niriState:\s*niriState/);
+  assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*commandPalette\.open[\s\S]*Launcher\s*\{[\s\S]*palette:\s*shellRoot\.commandPaletteService[\s\S]*niriState:\s*shellRoot\.niriStateService/);
   assert.match(shell, /IpcHandler\s*\{[\s\S]*target:\s*"launcher"[\s\S]*function toggle\(\): void \{ commandPalette\.toggle\(\); \}/);
 
   assert.match(appSearch, /import Quickshell/);
-  assert.match(appSearch, /DesktopEntries\.applications\.values/);
+  assert.match(appSearch, /readonly property var applications:\s*cacheLoaded \? DesktopEntries\.applications\.values : \[\]/);
   assert.match(appSearch, /property var appCache:\s*\[\]/);
   assert.match(appSearch, /property int revision:\s*0/);
-  assert.match(appSearch, /Component\.onCompleted:\s*refreshCache\(\)/);
-  assert.match(appSearch, /onApplicationsChanged:\s*refreshCache\(\)/);
+  assert.match(appSearch, /property bool cacheLoaded:\s*false/);
+  assert.match(appSearch, /property bool refreshingCache:\s*false/);
+  assert.doesNotMatch(appSearch, /Component\.onCompleted:\s*refreshCache\(\)/);
+  assert.match(appSearch, /onApplicationsChanged:\s*\{[\s\S]*if \(cacheLoaded && !refreshingCache\)[\s\S]*refreshCache\(\);[\s\S]*\}/);
   assert.match(appSearch, /function refreshCache\(\)/);
+  assert.match(appSearch, /refreshingCache = true/);
+  assert.match(appSearch, /const source = DesktopEntries\.applications\.values \|\| \[\]/);
+  assert.match(appSearch, /cacheLoaded = true/);
+  assert.match(appSearch, /refreshingCache = false/);
+  assert.match(appSearch, /function ensureCache\(\)[\s\S]*if \(!cacheLoaded\)[\s\S]*refreshCache\(\)/);
   assert.match(appSearch, /appCache = apps/);
   assert.match(appSearch, /revision \+= 1/);
   assert.match(appSearch, /function search\(query, limit\)/);
+  assert.match(appSearch.match(/function search\(query, limit\)\s*\{(?<body>[\s\S]*?)\n\s*const tokens/)?.groups?.body ?? "", /ensureCache\(\);/);
+  assert.doesNotMatch(appSearch.match(/function normalizedApplications\(\)\s*\{(?<body>[\s\S]*?)\n\s*\}/)?.groups?.body ?? "", /refreshCache\(\)/);
   assert.match(appSearch, /noDisplay/);
 
   assert.match(commandPalette, /required property var appSearch/);
@@ -244,10 +253,11 @@ test("wires launcher services and overlay through shell", async () => {
   assert.match(commandPalette, /property var recentIds:/);
   assert.match(commandPalette, /property bool keyboardNavigationActive:\s*false/);
   assert.match(commandPalette, /readonly property int appSearchRevision:\s*appSearch\.revision/);
-  assert.match(commandPalette, /readonly property var results:\s*searchResults\(query,\s*appSearchRevision,\s*usageRevision\)/);
+  assert.match(commandPalette, /readonly property var results:\s*open \? searchResults\(query,\s*appSearchRevision,\s*usageRevision\) : \[\]/);
   assert.match(commandPalette, /const appResults = appSearch\.search\(value\)/);
   assert.match(commandPalette, /return Number\.isFinite\(limit\) \? results\.slice\(0, limit\) : results/);
   assert.match(commandPalette, /property string confirmingActionId:\s*""/);
+  assert.match(commandPalette, /return result\?\.confirmation\?\.required === true/);
   assert.match(commandPalette, /function setInputQuery\(value\)/);
   assert.match(commandPalette, /function commitInputQuery\(\)/);
   assert.match(commandPalette, /function resetSearch\(\)/);

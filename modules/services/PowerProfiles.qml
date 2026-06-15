@@ -37,7 +37,14 @@ Item {
         setProcess.exec(["powerprofilesctl", "set", profile]);
     }
 
-    Component.onCompleted: refresh()
+    Component.onCompleted: startupRefreshTimer.start()
+
+    Timer {
+        id: startupRefreshTimer
+        interval: 2600
+        repeat: false
+        onTriggered: root.refresh()
+    }
 
     Timer {
         interval: 30000

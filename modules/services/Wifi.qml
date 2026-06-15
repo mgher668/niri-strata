@@ -249,8 +249,22 @@ Item {
     }
 
     Component.onCompleted: {
-        scan();
-        refreshVpn();
+        startupScanTimer.start();
+        startupVpnTimer.start();
+    }
+
+    Timer {
+        id: startupScanTimer
+        interval: 1800
+        repeat: false
+        onTriggered: root.scan()
+    }
+
+    Timer {
+        id: startupVpnTimer
+        interval: 3600
+        repeat: false
+        onTriggered: root.refreshVpn()
     }
 
     Timer {

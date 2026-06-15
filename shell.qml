@@ -12,7 +12,18 @@ import "./modules/sidebar/"
 import "./modules/launcher/"
 
 ShellRoot{
-    id: root
+    id: shellRoot
+    readonly property var niriStateService: niriState
+    readonly property var commandPaletteService: commandPalette
+    readonly property var sidebarControllerService: sidebarState
+    readonly property var notificationService: notifications
+    readonly property var systemActionsService: systemActions
+    readonly property var resourceUsageService: resourceUsage
+    readonly property var batteryStatusService: battery
+    readonly property var wifiStatusService: wifi
+    readonly property var bluetoothStatusService: bluetooth
+    readonly property var audioStatusService: audio
+    readonly property var mediaStatusService: media
 
     Niri {
         id: niri
@@ -160,30 +171,46 @@ ShellRoot{
         }
     }
 
-    Sidebar {
-        controller: sidebarState
-        notificationService: notifications
-        systemActions: systemActions
-        resourceService: resourceUsage
-        batteryService: battery
-        wifiService: wifi
-        bluetoothService: bluetooth
-        audioService: audio
-        mediaService: media
+    LazyLoader {
+        active: sidebarState.open
+
+        component: Sidebar {
+            controller: shellRoot.sidebarControllerService
+            notificationService: shellRoot.notificationService
+            systemActions: shellRoot.systemActionsService
+            resourceService: shellRoot.resourceUsageService
+            batteryService: shellRoot.batteryStatusService
+            wifiService: shellRoot.wifiStatusService
+            bluetoothService: shellRoot.bluetoothStatusService
+            audioService: shellRoot.audioStatusService
+            mediaService: shellRoot.mediaStatusService
+        }
     }
 
-    Launcher {
-        palette: commandPalette
-        niriState: niriState
+    LazyLoader {
+        active: commandPalette.open
+
+        component: Launcher {
+            palette: shellRoot.commandPaletteService
+            niriState: shellRoot.niriStateService
+        }
     }
 
-    NotificationToast {
-        service: notifications
-        niriState: niriState
-        sidebarController: sidebarState
+    LazyLoader {
+        active: notifications.popupCount > 0
+
+        component: NotificationToast {
+            service: shellRoot.notificationService
+            niriState: shellRoot.niriStateService
+            sidebarController: shellRoot.sidebarControllerService
+        }
     }
 
-    VolumeOsd {
-        service: audio
+    LazyLoader {
+        active: audio.osdVisible
+
+        component: VolumeOsd {
+            service: shellRoot.audioStatusService
+        }
     }
 }

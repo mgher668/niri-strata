@@ -301,7 +301,14 @@ ${target}`,
             recordingStopMonitorProcess.running = true;
     }
 
-    Component.onCompleted: refresh()
+    Component.onCompleted: startupRefreshTimer.start()
+
+    Timer {
+        id: startupRefreshTimer
+        interval: 2200
+        repeat: false
+        onTriggered: root.refresh()
+    }
 
     Timer {
         interval: 30000

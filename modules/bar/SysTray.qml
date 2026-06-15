@@ -11,7 +11,8 @@ Item {
     property var trayState: null
     property string outputName: ""
 
-    readonly property var items: SystemTray.items.values
+    property bool itemsReady: false
+    readonly property var items: itemsReady ? SystemTray.items.values : []
     readonly property int maxVisibleItems: trayConfig.maxVisibleItems
     property bool barIconsVisible: true
     property var sortedItems: []
@@ -56,11 +57,23 @@ Item {
         }
     }
 
-    Component.onCompleted: refreshItems()
-    onItemsChanged: refreshItems()
-    onMaxVisibleItemsChanged: refreshItems()
-    onTrayStateChanged: refreshItems()
-    onOutputNameChanged: refreshItems()
+    Component.onCompleted: trayStartupTimer.start()
+    onItemsChanged: {
+        if (itemsReady)
+            refreshItems();
+    }
+    onMaxVisibleItemsChanged: {
+        if (itemsReady)
+            refreshItems();
+    }
+    onTrayStateChanged: {
+        if (itemsReady)
+            refreshItems();
+    }
+    onOutputNameChanged: {
+        if (itemsReady)
+            refreshItems();
+    }
 
     function itemText(item) {
         return String(item?.tooltipTitle || item?.title || item?.id || "Tray item");
@@ -213,6 +226,17 @@ Item {
         tooltipEnabled = false;
         console.info("Secondary activating tray item:", item.id);
         item.secondaryActivate();
+    }
+
+    Timer {
+        id: trayStartupTimer
+
+        interval: 900
+        repeat: false
+        onTriggered: {
+            root.itemsReady = true;
+            root.refreshItems();
+        }
     }
 
     RowLayout {

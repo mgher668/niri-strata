@@ -4,15 +4,21 @@ import Quickshell
 Item {
     id: root
 
-    readonly property var applications: DesktopEntries.applications.values
     property bool includeHidden: false
+    property bool cacheLoaded: false
+    property bool refreshingCache: false
+    readonly property var applications: cacheLoaded ? DesktopEntries.applications.values : []
     property var appCache: []
     property int revision: 0
 
-    onApplicationsChanged: refreshCache()
-    onIncludeHiddenChanged: refreshCache()
-
-    Component.onCompleted: refreshCache()
+    onApplicationsChanged: {
+        if (cacheLoaded && !refreshingCache)
+            refreshCache();
+    }
+    onIncludeHiddenChanged: {
+        if (cacheLoaded)
+            refreshCache();
+    }
 
     function text(value) {
         return String(value ?? "").trim();
@@ -84,9 +90,11 @@ Item {
     }
 
     function refreshCache() {
+        refreshingCache = true;
+
         const seen = {};
         const apps = [];
-        const source = applications || [];
+        const source = DesktopEntries.applications.values || [];
 
         for (let i = 0; i < source.length; i++) {
             const app = normalizeApplication(source[i]);
@@ -98,14 +106,18 @@ Item {
         }
 
         appCache = apps;
+        cacheLoaded = true;
         revision += 1;
+        refreshingCache = false;
         return apps;
     }
 
-    function normalizedApplications() {
-        if (appCache.length === 0 && (applications || []).length > 0)
-            return refreshCache();
+    function ensureCache() {
+        if (!cacheLoaded)
+            refreshCache();
+    }
 
+    function normalizedApplications() {
         return appCache;
     }
 
@@ -206,6 +218,8 @@ Item {
     }
 
     function search(query, limit) {
+        ensureCache();
+
         const tokens = queryTokens(query);
         const scored = [];
         const apps = normalizedApplications();

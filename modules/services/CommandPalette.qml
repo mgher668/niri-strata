@@ -21,7 +21,7 @@ Item {
 
     readonly property var commands: commandItems()
     readonly property int appSearchRevision: appSearch.revision
-    readonly property var results: searchResults(query, appSearchRevision, usageRevision)
+    readonly property var results: open ? searchResults(query, appSearchRevision, usageRevision) : []
 
     onInputQueryChanged: {
         selectedIndex = 0;
@@ -352,7 +352,7 @@ Item {
     }
 
     function requiresResultConfirmation(result) {
-        return result && result.confirmation && result.confirmation.required === true;
+        return result?.confirmation?.required === true;
     }
 
     function clearConfirmation() {

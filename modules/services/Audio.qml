@@ -29,6 +29,7 @@ Item {
     readonly property string microphoneStateText: !inputAvailable ? "No input" : microphoneMuted ? "Muted" : "Input"
     readonly property string iconText: !available ? "A-" : muted ? "MUT" : volume >= 0.66 ? "VOL" : volume >= 0.33 ? "vol" : "low"
     property bool osdVisible: false
+    property bool osdChangeNotificationsEnabled: false
     property bool observedAudioState: false
     property real observedVolume: 0
     property bool observedMuted: false
@@ -57,7 +58,7 @@ Item {
         observedMuted = muted;
         observedAudioState = true;
 
-        if (showOnChange && changed)
+        if (showOnChange && osdChangeNotificationsEnabled && changed)
             showOsd();
     }
 
@@ -129,6 +130,18 @@ Item {
 
     PwObjectTracker {
         objects: [root.sink, root.source]
+    }
+
+    Timer {
+        id: osdStartupQuietTimer
+        interval: 1800
+        repeat: false
+        running: true
+        onTriggered: {
+            root.syncObservedAudioState(false);
+            root.osdVisible = false;
+            root.osdChangeNotificationsEnabled = true;
+        }
     }
 
     Timer {
