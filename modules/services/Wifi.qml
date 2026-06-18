@@ -11,17 +11,8 @@ Item {
     readonly property bool hardwareEnabled: Networking.wifiHardwareEnabled
     readonly property bool enabled: available && Networking.wifiEnabled
     readonly property var networks: available ? (wifiDevice.networks?.values ?? []) : []
-    readonly property var sortedNetworks: [...networks].sort((a, b) => {
-        if (a.connected && !b.connected)
-            return -1;
-        if (!a.connected && b.connected)
-            return 1;
-        if (a.known && !b.known)
-            return -1;
-        if (!a.known && b.known)
-            return 1;
-        return signalPercent(b) - signalPercent(a);
-    })
+    property var sortedNetworks: []
+    readonly property int networkListDebounceMs: 350
     readonly property var activeNetwork: networks.find(network => network.connected) ?? null
     readonly property string activeSsid: activeNetwork?.name ?? ""
     readonly property bool scanning: scanBusy || (available && (wifiDevice.scannerEnabled ?? false))
@@ -35,6 +26,34 @@ Item {
         : statusText
     readonly property var activeVpn: vpnProfiles.find(profile => profile.active) ?? null
     readonly property string vpnStatusText: activeVpn ? activeVpn.name : vpnProfiles.length > 0 ? "Disconnected" : "No VPN"
+
+    onNetworksChanged: scheduleNetworkListRefresh()
+    onAvailableChanged: scheduleNetworkListRefresh()
+    onEnabledChanged: scheduleNetworkListRefresh()
+
+    function sortNetworks(source) {
+        const nextNetworks = [...(source || [])];
+        nextNetworks.sort((a, b) => {
+            if (a.connected && !b.connected)
+                return -1;
+            if (!a.connected && b.connected)
+                return 1;
+            if (a.known && !b.known)
+                return -1;
+            if (!a.known && b.known)
+                return 1;
+            return signalPercent(b) - signalPercent(a);
+        });
+        return nextNetworks;
+    }
+
+    function scheduleNetworkListRefresh() {
+        networkListRefreshTimer.restart();
+    }
+
+    function refreshNetworkList() {
+        sortedNetworks = available && enabled ? sortNetworks(networks) : [];
+    }
 
     property bool scanBusy: false
     property string lastError: ""
@@ -249,8 +268,16 @@ Item {
     }
 
     Component.onCompleted: {
+        refreshNetworkList();
         startupScanTimer.start();
         startupVpnTimer.start();
+    }
+
+    Timer {
+        id: networkListRefreshTimer
+        interval: root.networkListDebounceMs
+        repeat: false
+        onTriggered: root.refreshNetworkList()
     }
 
     Timer {

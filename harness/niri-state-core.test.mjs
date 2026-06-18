@@ -667,10 +667,20 @@ test("mounts overlay windows only when they are needed", async () => {
 
   assert.doesNotMatch(shell, /overlaysMounted/);
   assert.doesNotMatch(shell, /id:\s*overlayMountTimer/);
-  assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*sidebarState\.open[\s\S]*component:\s*Sidebar/);
+  assert.match(shell, /property bool sidebarLoaded:\s*false/);
+  assert.match(shell, /onOpenChanged:\s*\{[\s\S]*if \(open\)[\s\S]*shellRoot\.sidebarLoaded = true;/);
+  assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*shellRoot\.sidebarLoaded[\s\S]*component:\s*Sidebar/);
   assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*commandPalette\.open[\s\S]*component:\s*Launcher/);
   assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*notifications\.popupCount > 0[\s\S]*component:\s*NotificationToast/);
   assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*audio\.osdVisible[\s\S]*component:\s*VolumeOsd/);
+});
+
+test("keeps expensive DDC display detection out of frequent background polling", async () => {
+  const brightness = await readFile(join(root, "../modules/services/Brightness.qml"), "utf8");
+
+  assert.match(brightness, /Component\.onCompleted:\s*startupRefreshTimer\.start\(\)/);
+  assert.doesNotMatch(brightness, /interval:\s*30000[\s\S]*onTriggered:\s*root\.refresh\(\)/);
+  assert.doesNotMatch(brightness, /repeat:\s*true[\s\S]*onTriggered:\s*root\.refresh\(\)/);
 });
 
 test("enables QApplication and keeps tray right-clicks on menu display path", async () => {
@@ -855,7 +865,7 @@ test("wires sidebar shell through focused-output controller", async () => {
   assert.match(shell, /function close\(\):\s*void\s*\{\s*sidebarState\.close\(\);\s*\}/);
   assert.match(shell, /function isOpen\(\):\s*bool\s*\{\s*return sidebarState\.open;\s*\}/);
   assert.match(shell, /sidebarController:\s*sidebarState/);
-  assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*sidebarState\.open[\s\S]*Sidebar\s*\{[\s\S]*controller:\s*shellRoot\.sidebarControllerService/s);
+  assert.match(shell, /LazyLoader\s*\{[\s\S]*active:\s*shellRoot\.sidebarLoaded[\s\S]*Sidebar\s*\{[\s\S]*controller:\s*shellRoot\.sidebarControllerService/s);
   assert.doesNotMatch(shell, /id:\s*sidebarController/);
   assert.doesNotMatch(shell, /sidebarController:\s*sidebarController/);
   assert.match(bar, /required property var sidebarController/);
@@ -1275,6 +1285,13 @@ test("wires Wi-Fi and VPN panel through a NetworkManager service boundary", asyn
   assert.match(actions, /required property var wifiService/);
   assert.match(actions, /wifiService\.toggleEnabled\(\)/);
   assert.match(wifi, /import Quickshell\.Networking/);
+  assert.match(wifi, /property var sortedNetworks:\s*\[\]/);
+  assert.match(wifi, /readonly property int networkListDebounceMs:\s*350/);
+  assert.match(wifi, /onNetworksChanged:\s*scheduleNetworkListRefresh\(\)/);
+  assert.match(wifi, /function sortNetworks\(source\)/);
+  assert.match(wifi, /function refreshNetworkList\(\)[\s\S]*sortedNetworks = available && enabled \? sortNetworks\(networks\) : \[\]/);
+  assert.match(wifi, /id:\s*networkListRefreshTimer[\s\S]*interval:\s*root\.networkListDebounceMs[\s\S]*root\.refreshNetworkList\(\)/);
+  assert.doesNotMatch(wifi, /readonly property var sortedNetworks:\s*\[\.\.\.networks\]\.sort/);
   assert.match(wifi, /connectWithPsk\(psk\)/);
   assert.match(wifi, /inputMethodHints|Password required|passwordNetwork/);
   assert.match(wifi, /function parseVpnProfiles\(\)/);

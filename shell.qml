@@ -24,6 +24,7 @@ ShellRoot{
     readonly property var bluetoothStatusService: bluetooth
     readonly property var audioStatusService: audio
     readonly property var mediaStatusService: media
+    property bool sidebarLoaded: false
 
     Niri {
         id: niri
@@ -108,6 +109,11 @@ ShellRoot{
     SidebarController {
         id: sidebarState
         niriState: niriState
+
+        onOpenChanged: {
+            if (open)
+                shellRoot.sidebarLoaded = true;
+        }
     }
 
     AppSearch {
@@ -172,7 +178,7 @@ ShellRoot{
     }
 
     LazyLoader {
-        active: sidebarState.open
+        active: shellRoot.sidebarLoaded
 
         component: Sidebar {
             controller: shellRoot.sidebarControllerService

@@ -267,13 +267,6 @@ Item {
         onTriggered: root.refresh()
     }
 
-    Timer {
-        interval: 30000
-        running: true
-        repeat: true
-        onTriggered: root.refresh()
-    }
-
     Component {
         id: displayComponent
         DisplayEntry {}
