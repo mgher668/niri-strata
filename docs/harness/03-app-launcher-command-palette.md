@@ -129,3 +129,46 @@ Acceptance:
   it does not.
 - Future integrations can add clipboard, screenshot, settings, emoji,
   calculator, or web/search items without bypassing the command registry.
+
+## Phase 7: external app index and full-result search
+
+Status: Planned. This phase moves application indexing and heavy search work
+out of the Quickshell/QML hot path while preserving the current launcher UI and
+uncapped result behavior.
+
+Target:
+
+- Add a launcher helper that scans XDG `.desktop` application directories,
+  builds a persistent JSON cache, and can return every matching application in
+  ranked order.
+- Keep QML responsible for rendering and command-palette state only; QML should
+  not synchronously scan desktop entries, normalize every app, or sort every
+  app result during pointer/keyboard interaction.
+- Keep `DesktopEntries.applications` as a compatibility fallback until the
+  helper path is stable.
+
+Test:
+
+- Desktop entry parser covers `Name`, `GenericName`, `Comment`, `Icon`, `Exec`,
+  `Path`, `Terminal`, `Categories`, `Keywords`, `NoDisplay`, and duplicate IDs.
+- Cache generation writes a stable schema with precomputed lowercase, compact,
+  initials, and combined search fields.
+- Search returns all matching applications in deterministic ranked order, not a
+  fixed top-N subset.
+- Empty-query search returns all visible applications in deterministic default
+  order, with pinned/recent command-palette adjustments applied afterward.
+- Directory watch/rescan logic debounces changes and continues serving the last
+  good cache while a rescan is running.
+- QML service tests confirm `AppSearch` consumes helper/cache data and no longer
+  depends on `DesktopEntries` for the primary search path.
+
+Acceptance:
+
+- The launcher opens immediately with the last good cache, even if an app
+  directory rescan is pending.
+- Search can display every matching result in the overlay scroll view without
+  freezing quickshell input, pointer movement, or niri workspace updates.
+- A failed or missing helper degrades to command results and, when available,
+  the legacy `DesktopEntries` fallback instead of crashing the shell.
+- Manual smoke confirms open, close, type-to-search, full result scrolling,
+  app launch, helper restart, and app directory rescan behavior.

@@ -35,6 +35,8 @@ Item {
     onQueryChanged: {
         selectedIndex = 0;
         clearConfirmation();
+        if (open)
+            appSearch.requestSearch(query);
     }
     onResultsChanged: clampSelection()
 
@@ -410,6 +412,8 @@ Item {
     function openPalette() {
         resetSearch();
         open = true;
+        appSearch.ensureCache();
+        appSearch.requestSearch(query);
     }
 
     function close() {
@@ -474,6 +478,11 @@ Item {
         if (result.type === "app" && result.desktopEntry) {
             close();
             result.desktopEntry.execute();
+            return;
+        }
+
+        if (result.type === "app" && appSearch.launch(result)) {
+            close();
             return;
         }
 

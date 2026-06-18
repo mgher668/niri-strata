@@ -32,6 +32,19 @@ Current implementation status:
   immediate during rapid up/down navigation, while normal hover/transition
   animation remains available outside that path.
 
+Planned performance direction:
+
+- Keep the Quickshell launcher UI and command palette behavior, but move
+  application indexing and heavy search work out of the QML hot path.
+- Build an external launcher index/search helper that scans `.desktop` files,
+  writes a persistent JSON cache, watches XDG application directories with
+  debounce, and serves the last good cache while a rescan is in progress.
+- Preserve uncapped result semantics: application search should compute and
+  return every matching result in ranked order, while the QML `ListView` handles
+  overflow and only instantiates visible rows.
+- Treat `DesktopEntries.applications` as a compatibility fallback rather than
+  the preferred daily-use backend once the external cache is available.
+
 Initial groups:
 
 - Applications
@@ -86,9 +99,17 @@ Recommended item fields:
 
 ## Backend requirements
 
-Application search should use Quickshell's `DesktopEntries.applications` model first. The installed Quickshell exposes `DesktopEntry` fields for `id`, `name`, `genericName`, `comment`, `icon`, `command`, `workingDirectory`, `runInTerminal`, `categories`, `keywords`, `actions`, and `noDisplay`, which are enough for the first launcher model.
+The initial implementation can use Quickshell's `DesktopEntries.applications`
+model. The installed Quickshell exposes `DesktopEntry` fields for `id`, `name`,
+`genericName`, `comment`, `icon`, `command`, `workingDirectory`,
+`runInTerminal`, `categories`, `keywords`, `actions`, and `noDisplay`, which are
+enough for the first launcher model.
 
-Use a parser-backed command that reads `.desktop` files only as a fallback if the Quickshell desktop entry model is unavailable in a target environment.
+For the performance-oriented implementation, prefer a parser-backed external
+helper that reads `.desktop` files directly, precomputes normalized search
+fields, and returns complete ranked result sets to QML. Quickshell's
+`DesktopEntries` model should remain available as a fallback if the helper is
+missing or returns no cache.
 
 Command palette actions should call service actions instead of embedding raw shell strings in UI rows.
 

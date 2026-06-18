@@ -1,23 +1,142 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
 Item {
     id: root
 
     property bool includeHidden: false
     property bool cacheLoaded: false
+    property bool fallbackCacheLoaded: false
     property bool refreshingCache: false
-    readonly property var applications: cacheLoaded ? DesktopEntries.applications.values : []
+    property bool helperAvailable: true
+    property bool helperSearchRunning: false
+    property bool helperWatchStarted: false
+    property string helperLastError: ""
+    property string activeQuery: ""
+    property var pendingQuery: null
+    property var queryResults: ({})
+    property var helperApps: []
+    property var lastStableResults: []
+    readonly property var applications: fallbackCacheLoaded ? DesktopEntries.applications.values : []
     property var appCache: []
     property int revision: 0
 
+    readonly property string helperScriptUrl: String(Qt.resolvedUrl("../../scripts/launcher-indexer.mjs"))
+    readonly property string helperScript: helperScriptUrl.startsWith("file://")
+        ? decodeURIComponent(helperScriptUrl.slice(7))
+        : helperScriptUrl
+
     onApplicationsChanged: {
-        if (cacheLoaded && !refreshingCache)
+        if (fallbackCacheLoaded && !refreshingCache)
             refreshCache();
     }
     onIncludeHiddenChanged: {
-        if (cacheLoaded)
+        if (fallbackCacheLoaded)
             refreshCache();
+    }
+
+    function helperCommand(args) {
+        return ["node", helperScript].concat(args || []);
+    }
+
+    function startWatcher() {
+        if (helperWatchStarted)
+            return;
+
+        helperWatchStarted = true;
+        watcherProcess.exec(helperCommand(["watch", "--quiet"]));
+    }
+
+    function ensureCache() {
+        startWatcher();
+        requestSearch("");
+    }
+
+    function requestSearch(query) {
+        const key = String(query ?? "");
+
+        if (queryResults[key] !== undefined && pendingQuery === null)
+            return;
+
+        pendingQuery = key;
+        runPendingSearch();
+    }
+
+    function runPendingSearch() {
+        if (searchProcess.running || pendingQuery === null)
+            return;
+
+        activeQuery = String(pendingQuery);
+        pendingQuery = null;
+        helperSearchRunning = true;
+        searchProcess.exec(helperCommand(["search", "--query", activeQuery]));
+    }
+
+    function applySearchPayload(payload) {
+        if (!payload || !Array.isArray(payload.results))
+            throw new Error("Invalid launcher helper payload");
+
+        const key = String(payload.query ?? activeQuery);
+        const next = Object.assign({}, queryResults);
+        next[key] = payload.results;
+        queryResults = next;
+        if (key === "")
+            helperApps = payload.results;
+        lastStableResults = payload.results;
+        helperAvailable = true;
+        cacheLoaded = true;
+        helperLastError = "";
+        revision += 1;
+    }
+
+    function applySearchOutput(text) {
+        const trimmed = String(text ?? "").trim();
+        if (trimmed.length === 0)
+            return;
+
+        try {
+            applySearchPayload(JSON.parse(trimmed));
+        } catch (error) {
+            helperAvailable = false;
+            helperLastError = String(error);
+            refreshCache();
+        }
+    }
+
+    function handleSearchExit(exitCode) {
+        helperSearchRunning = false;
+
+        if (exitCode !== 0) {
+            helperAvailable = false;
+            refreshCache();
+        }
+
+        runPendingSearch();
+    }
+
+    function search(query, limit) {
+        const key = String(query ?? "");
+        let results = queryResults[key];
+
+        if (results === undefined && !helperAvailable)
+            results = fallbackSearch(key);
+        else if (results === undefined && helperApps.length > 0)
+            results = cachedSearch(key, helperApps, limit);
+        else if (results === undefined && (helperSearchRunning || pendingQuery !== null))
+            results = lastStableResults;
+        else if (results === undefined)
+            results = [];
+
+        return Number.isFinite(limit) ? results.slice(0, limit) : results;
+    }
+
+    function launch(result) {
+        if (!result || String(result.appId || "").length === 0)
+            return false;
+
+        launchProcess.exec(helperCommand(["launch", "--app-id", String(result.appId)]));
+        return true;
     }
 
     function text(value) {
@@ -91,6 +210,7 @@ Item {
 
     function refreshCache() {
         refreshingCache = true;
+        fallbackCacheLoaded = true;
 
         const seen = {};
         const apps = [];
@@ -110,11 +230,6 @@ Item {
         revision += 1;
         refreshingCache = false;
         return apps;
-    }
-
-    function ensureCache() {
-        if (!cacheLoaded)
-            refreshCache();
     }
 
     function normalizedApplications() {
@@ -217,12 +332,9 @@ Item {
         };
     }
 
-    function search(query, limit) {
-        ensureCache();
-
+    function cachedSearch(query, apps, limit) {
         const tokens = queryTokens(query);
         const scored = [];
-        const apps = normalizedApplications();
 
         for (const app of apps) {
             const score = scoreApp(app, tokens);
@@ -237,5 +349,53 @@ Item {
         });
 
         return Number.isFinite(limit) ? scored.slice(0, limit) : scored;
+    }
+
+    function fallbackSearch(query, limit) {
+        if (!fallbackCacheLoaded)
+            refreshCache();
+
+        return cachedSearch(query, normalizedApplications(), limit);
+    }
+
+    Process {
+        id: searchProcess
+        stdout: StdioCollector {
+            onStreamFinished: root.applySearchOutput(text)
+        }
+        stderr: StdioCollector {
+            onStreamFinished: {
+                const message = text.trim();
+                if (message.length > 0)
+                    root.helperLastError = message.split("\n")[0];
+            }
+        }
+        onExited: (exitCode, exitStatus) => root.handleSearchExit(exitCode)
+    }
+
+    Process {
+        id: launchProcess
+        stderr: StdioCollector {
+            onStreamFinished: {
+                const message = text.trim();
+                if (message.length > 0)
+                    root.helperLastError = message.split("\n")[0];
+            }
+        }
+    }
+
+    Process {
+        id: watcherProcess
+        stderr: StdioCollector {
+            onStreamFinished: {
+                const message = text.trim();
+                if (message.length > 0)
+                    root.helperLastError = message.split("\n")[0];
+            }
+        }
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode !== 0)
+                root.helperAvailable = false;
+        }
     }
 }

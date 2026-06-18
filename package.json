@@ -9,6 +9,9 @@
   "type": "module",
   "scripts": {
     "graphify:qml": "node harness/graphify-qml-index.mjs",
-    "harness": "node --test harness/*.test.mjs"
+    "harness": "node --test harness/*.test.mjs",
+    "launcher:scan": "node scripts/launcher-indexer.mjs scan --pretty",
+    "launcher:search": "node scripts/launcher-indexer.mjs search --pretty",
+    "launcher:watch": "node scripts/launcher-indexer.mjs watch"
   }
 }
