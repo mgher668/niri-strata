@@ -8,6 +8,7 @@
   },
   "type": "module",
   "scripts": {
+    "graphify:qml": "node harness/graphify-qml-index.mjs",
     "harness": "node --test harness/*.test.mjs"
   }
 }

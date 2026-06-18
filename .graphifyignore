@@ -10,10 +10,8 @@ node_modules/
 coverage/
 
 tmp/
-*.tmp
 temp/
-
-graphify-out/
+*.tmp
 
 bar-*.png
 sidebar-*.png
