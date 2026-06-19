@@ -10,8 +10,10 @@ Item {
     property int cardRadius: Theme.rounding.md
     property int minimumCardHeight: 76
     property bool dismissing: false
+    property bool dragMoved: false
     readonly property int dismissThreshold: Math.min(124, Math.max(72, width * 0.34))
     readonly property string bodyText: notification.body || ""
+    readonly property int clickDragTolerance: 6
 
     signal dismissed()
 
@@ -78,7 +80,19 @@ Item {
             drag.axis: Drag.XAxis
             drag.minimumX: 0
             drag.maximumX: root.width * 0.58
-            onReleased: root.settleSwipe()
+            onPressed: root.dragMoved = false
+            onPositionChanged: {
+                if (Math.abs(card.x) > root.clickDragTolerance)
+                    root.dragMoved = true;
+            }
+            onReleased: {
+                if (root.dragMoved)
+                    root.settleSwipe();
+            }
+            onClicked: {
+                if (!root.dragMoved)
+                    root.requestDismiss(false);
+            }
             onCanceled: card.x = 0
         }
 

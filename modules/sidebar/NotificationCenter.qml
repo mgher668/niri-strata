@@ -10,13 +10,15 @@ ColumnLayout {
     spacing: Theme.spacing.md
 
     RowLayout {
+        id: headerRow
+
         Layout.fillWidth: true
         spacing: Theme.spacing.md
 
         SectionHeader {
             icon: "notifications"
             title: "Notifications"
-            subtitle: root.service.hasNotifications ? `${root.service.notifications.length} recent` : "All clear"
+            subtitle: root.service.hasNotifications ? `${root.service.count} recent in ${root.service.groupCount} apps` : "All clear"
             active: root.service.doNotDisturb
 
             ActionChip {
@@ -44,16 +46,24 @@ ColumnLayout {
         color: Theme.colors.subtleText
     }
 
-    Repeater {
-        model: root.service.notifications
+    ListView {
+        id: notificationsView
 
-        DismissibleNotificationCard {
-            required property var modelData
+        Layout.fillWidth: true
+        implicitHeight: contentHeight
+        visible: root.service.hasNotifications
+        spacing: Theme.spacing.md
+        model: root.service.appNameList
+        interactive: false
+        boundsBehavior: Flickable.StopAtBounds
+        cacheBuffer: 180
 
-            Layout.fillWidth: true
-            notification: modelData
-            bodyLineCount: 3
-            onDismissed: root.service.dismissNotification(modelData.notificationId)
+        delegate: NotificationGroupCard {
+            required property string modelData
+
+            width: ListView.view.width
+            service: root.service
+            notificationGroup: root.service.groupForApp(modelData)
         }
     }
 }

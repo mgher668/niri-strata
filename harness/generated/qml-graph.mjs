@@ -338,6 +338,7 @@ export function qml_NiriState() {
 export function qml_Notifications() {
   // modules/services/Notifications.qml
   const rootType = "Item";
+  qml_Config();
   return rootType;
 }
 
@@ -441,8 +442,18 @@ export function qml_NotificationCenter() {
   // modules/sidebar/NotificationCenter.qml
   const rootType = "ColumnLayout";
   qml_ActionChip();
-  qml_DismissibleNotificationCard();
+  qml_NotificationGroupCard();
   qml_SectionHeader();
+  qml_StyledText();
+  qml_Theme();
+  return rootType;
+}
+
+export function qml_NotificationGroupCard() {
+  // modules/sidebar/NotificationGroupCard.qml
+  const rootType = "Rectangle";
+  qml_IconButton();
+  qml_NotificationAppIcon();
   qml_StyledText();
   qml_Theme();
   return rootType;
@@ -592,6 +603,6 @@ export function qml_shell() {
 }
 
 export const qmlGraphSummary = Object.freeze({
-  files: 65,
-  relations: 200,
+  files: 66,
+  relations: 205,
 });

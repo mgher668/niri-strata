@@ -30,12 +30,13 @@ Each feature should be implemented harness-first:
 | 2 | App launcher / command palette | Smoke pending | [03-app-launcher-command-palette.md](features/03-app-launcher-command-palette.md) |
 | 3 | Clipboard history panel | Planned | [02-clipboard-history.md](features/02-clipboard-history.md) |
 | 4 | Enhanced screenshot tooling | Planned | [04-screenshot-tooling.md](features/04-screenshot-tooling.md) |
-| 5 | Wallpaper + Material color pipeline | Backlog | Future detail doc |
-| 6 | Color picker | Backlog | Future detail doc |
-| 7 | Idle inhibitor | Backlog | Future detail doc |
-| 8 | More complete media overlay | Backlog | Future detail doc |
-| 9 | Workspace / window overview | Backlog | Future detail doc |
-| 10 | Settings UI | Backlog | Future detail doc |
+| 5 | Notification center redesign | Planned | [05-notification-center-redesign.md](features/05-notification-center-redesign.md) |
+| 6 | Wallpaper + Material color pipeline | Backlog | Future detail doc |
+| 7 | Color picker | Backlog | Future detail doc |
+| 8 | Idle inhibitor | Backlog | Future detail doc |
+| 9 | More complete media overlay | Backlog | Future detail doc |
+| 10 | Workspace / window overview | Backlog | Future detail doc |
+| 11 | Settings UI | Backlog | Future detail doc |
 
 ## Recommended order
 

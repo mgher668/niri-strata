@@ -25,4 +25,13 @@ QtObject {
         property int iconButtonSize: 40
         property real wheelScrollFactor: 1.2
     }
+
+    readonly property QtObject notifications: QtObject {
+        property int maxHistoryCount: 500
+        property int maxHistoryPerApp: 200
+        property int previewCount: 2
+        property int expandedPreviewCount: 8
+        property bool debugSeedNotifications: false
+        property int debugSeedNotificationCount: 300
+    }
 }

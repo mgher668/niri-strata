@@ -987,6 +987,7 @@ test("styles detailed sidebar panels with shared Material components", async () 
     brightness: await readFile(join(root, "../modules/sidebar/BrightnessPanel.qml"), "utf8"),
     nightMode: await readFile(join(root, "../modules/sidebar/NightModePanel.qml"), "utf8"),
     notifications: await readFile(join(root, "../modules/sidebar/NotificationCenter.qml"), "utf8"),
+    notificationGroup: await readFile(join(root, "../modules/sidebar/NotificationGroupCard.qml"), "utf8"),
     toast: await readFile(join(root, "../modules/sidebar/NotificationToast.qml"), "utf8"),
     dismissibleNotification: await readFile(join(root, "../modules/sidebar/DismissibleNotificationCard.qml"), "utf8"),
     notificationIcon: await readFile(join(root, "../modules/common/NotificationAppIcon.qml"), "utf8"),
@@ -1017,12 +1018,31 @@ test("styles detailed sidebar panels with shared Material components", async () 
   assert.match(files.nightMode, /actions\.refreshNightMode\(\)/);
   assert.doesNotMatch(files.nightMode, /busctl|wl-gammarelay-rs|Quickshell\.execDetached/);
   assert.match(files.notifications, /SectionHeader\s*\{[\s\S]*icon:\s*"notifications"/);
-  assert.match(files.notifications, /DismissibleNotificationCard\s*\{/);
+  assert.match(files.notifications, /ListView\s*\{/);
+  assert.match(files.notifications, /implicitHeight:\s*contentHeight/);
+  assert.match(files.notifications, /model:\s*root\.service\.appNameList/);
+  assert.match(files.notifications, /delegate:\s*NotificationGroupCard\s*\{/);
+  assert.match(files.notifications, /notificationGroup:\s*root\.service\.groupForApp\(modelData\)/);
+  assert.doesNotMatch(files.notifications, /Repeater\s*\{/);
+  assert.doesNotMatch(files.notifications, /model:\s*root\.service\.notifications/);
+  assert.doesNotMatch(files.notifications, /Layout\.preferredHeight/);
+  assert.doesNotMatch(files.notifications, /onWheel:\s*wheel =>/);
+  assert.match(files.notificationGroup, /required property var notificationGroup/);
+  assert.match(files.notificationGroup, /readonly property var visibleNotifications/);
+  assert.match(files.notificationGroup, /model:\s*root\.visibleNotifications/);
+  assert.match(files.notificationGroup, /root\.service\.dismissAppNotifications\(root\.appName\)/);
+  assert.match(files.notificationGroup, /root\.service\.dismissNotification\(modelData\.notificationId\)/);
+  assert.match(files.notificationGroup, /acceptedButtons:\s*Qt\.LeftButton/);
+  assert.match(files.notificationGroup, /onClicked:\s*root\.service\.dismissNotification\(modelData\.notificationId\)/);
   assert.match(files.toast, /DismissibleNotificationCard\s*\{/);
   assert.match(files.dismissibleNotification, /NotificationAppIcon\s*\{[\s\S]*appIcon:\s*root\.notification\.appIcon[\s\S]*image:\s*root\.notification\.image/);
   assert.match(files.dismissibleNotification, /IconButton\s*\{[\s\S]*icon:\s*"close"/);
   assert.match(files.dismissibleNotification, /drag\.axis:\s*Drag\.XAxis/);
   assert.match(files.dismissibleNotification, /drag\.minimumX:\s*0/);
+  assert.match(files.dismissibleNotification, /property bool dragMoved:\s*false/);
+  assert.match(files.dismissibleNotification, /readonly property int clickDragTolerance:\s*6/);
+  assert.match(files.dismissibleNotification, /if \(Math\.abs\(card\.x\) > root\.clickDragTolerance\)[\s\S]*root\.dragMoved = true/);
+  assert.match(files.dismissibleNotification, /onClicked:\s*\{[\s\S]*if \(!root\.dragMoved\)[\s\S]*root\.requestDismiss\(false\)/);
   assert.match(files.dismissibleNotification, /readonly property int dismissThreshold/);
   assert.match(files.dismissibleNotification, /Behavior on x/);
   assert.match(files.dismissibleNotification, /signal dismissed\(\)/);
@@ -1053,9 +1073,11 @@ test("wires notification ownership into sidebar and focused-output toasts", asyn
   const notifications = await readFile(join(root, "../modules/services/Notifications.qml"), "utf8");
   const sidebar = await readFile(join(root, "../modules/sidebar/Sidebar.qml"), "utf8");
   const center = await readFile(join(root, "../modules/sidebar/NotificationCenter.qml"), "utf8");
+  const groupCard = await readFile(join(root, "../modules/sidebar/NotificationGroupCard.qml"), "utf8");
   const toast = await readFile(join(root, "../modules/sidebar/NotificationToast.qml"), "utf8");
   const card = await readFile(join(root, "../modules/sidebar/DismissibleNotificationCard.qml"), "utf8");
   const icon = await readFile(join(root, "../modules/common/NotificationAppIcon.qml"), "utf8");
+  const config = await readFile(join(root, "../modules/common/Config.qml"), "utf8");
 
   assert.match(shell, /Notifications\s*\{\s*id:\s*notifications/s);
   assert.match(shell, /readonly property var notificationService:\s*notifications/);
@@ -1064,6 +1086,14 @@ test("wires notification ownership into sidebar and focused-output toasts", asyn
   assert.match(notifications, /import Quickshell\.Services\.Notifications/);
   assert.match(notifications, /NotificationServer\s*\{/);
   assert.match(notifications, /property bool doNotDisturb:\s*false/);
+  assert.match(notifications, /property int maxHistoryCount:\s*Config\.notifications\.maxHistoryCount/);
+  assert.match(notifications, /property int maxHistoryPerApp:\s*Config\.notifications\.maxHistoryPerApp/);
+  assert.match(notifications, /readonly property var groupsByAppName:\s*groupsForList\(notifications\)/);
+  assert.match(notifications, /readonly property list<string> appNameList:\s*appNameListForGroups\(groupsByAppName\)/);
+  assert.match(notifications, /function groupsForList\(source\)/);
+  assert.match(notifications, /function groupForApp\(appName\)/);
+  assert.match(notifications, /function cappedEntries\(entries, dismissDropped\)/);
+  assert.match(notifications, /function dismissAppNotifications\(appName\)/);
   assert.match(notifications, /popup:\s*!doNotDisturb/);
   assert.match(notifications, /function toggleDoNotDisturb\(\)/);
   assert.match(notifications, /function clearAll\(\)/);
@@ -1075,8 +1105,26 @@ test("wires notification ownership into sidebar and focused-output toasts", asyn
   assert.match(sidebar, /NotificationCenter\s*\{/);
   assert.match(center, /root\.service\.toggleDoNotDisturb\(\)/);
   assert.match(center, /root\.service\.clearAll\(\)/);
-  assert.match(center, /root\.service\.dismissNotification\(modelData\.notificationId\)/);
-  assert.match(center, /DismissibleNotificationCard\s*\{[\s\S]*bodyLineCount:\s*3/);
+  assert.match(groupCard, /root\.service\.dismissNotification\(modelData\.notificationId\)/);
+  assert.match(groupCard, /root\.service\.dismissAppNotifications\(root\.appName\)/);
+  assert.doesNotMatch(sidebar, /maxPanelHeight:/);
+  assert.match(center, /ListView\s*\{[\s\S]*model:\s*root\.service\.appNameList/);
+  assert.match(center, /implicitHeight:\s*contentHeight/);
+  assert.match(center, /delegate:\s*NotificationGroupCard\s*\{/);
+  assert.match(center, /notificationGroup:\s*root\.service\.groupForApp\(modelData\)/);
+  assert.doesNotMatch(center, /model:\s*root\.service\.notifications/);
+  assert.doesNotMatch(center, /Layout\.preferredHeight/);
+  assert.match(center, /interactive:\s*false/);
+  assert.doesNotMatch(center, /onWheel:\s*wheel =>/);
+  assert.doesNotMatch(center, /notificationsView\.scrollBy/);
+  assert.match(center, /cacheBuffer:\s*180/);
+  assert.match(groupCard, /readonly property int visibleCount:\s*expanded \? Math\.min\(notificationCount, expandedCount\) : Math\.min\(notificationCount, collapsedCount\)/);
+  assert.match(groupCard, /model:\s*root\.visibleNotifications/);
+  assert.match(groupCard, /visible:\s*root\.expanded && root\.notificationCount > root\.visibleCount/);
+  assert.match(config, /readonly property QtObject notifications:\s*QtObject/);
+  assert.match(config, /property int maxHistoryCount:\s*500/);
+  assert.match(config, /property int maxHistoryPerApp:\s*200/);
+  assert.match(config, /property bool debugSeedNotifications:\s*false/);
   assert.match(toast, /required property var niriState/);
   assert.match(toast, /property var sidebarController:\s*null/);
   assert.match(sidebar, /WlrLayershell\.layer:\s*WlrLayer\.Top/);
@@ -1094,6 +1142,9 @@ test("wires notification ownership into sidebar and focused-output toasts", asyn
   assert.doesNotMatch(toast, /bottom:\s*true/);
   assert.match(card, /function settleSwipe\(\)/);
   assert.match(card, /card\.x >= dismissThreshold/);
+  assert.match(card, /property bool dragMoved:\s*false/);
+  assert.match(card, /onClicked:\s*\{[\s\S]*if \(!root\.dragMoved\)[\s\S]*root\.requestDismiss\(false\)/);
+  assert.match(card, /onReleased:\s*\{[\s\S]*if \(root\.dragMoved\)[\s\S]*root\.settleSwipe\(\)/);
   assert.match(card, /requestDismiss\(true\)/);
   assert.match(card, /requestDismiss\(false\)/);
   assert.match(card, /drag\.maximumX:\s*root\.width \* 0\.58/);
