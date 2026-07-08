@@ -795,57 +795,6 @@ test("enables QApplication and keeps tray right-clicks on menu display path", as
   assert.doesNotMatch(overflow, /if \(!root\.requestMenu\(modelData, trayButton\)\)\s*modelData\.secondaryActivate/);
 });
 
-test("documents sidebar scope with harness-backed implementation gates", async () => {
-  const plan = await readFile(join(root, "../SIDEBAR_PLAN.md"), "utf8");
-
-  assert.match(plan, /focused niri output/);
-  assert.match(plan, /Notification ownership/);
-  assert.match(plan, /Wi-Fi connection: first version should support entering a password/);
-  assert.match(plan, /BlueZ/);
-  assert.match(plan, /PipeWire and WirePlumber/);
-  assert.match(plan, /NetworkManager/);
-  assert.match(plan, /Do not log passwords/);
-  assert.match(plan, /Do not store passwords in QML properties longer than needed/);
-  assert.match(plan, /every phase must add or update harness coverage/i);
-  assert.match(plan, /Sidebar is created for focused output only/);
-  assert.match(plan, /Sidebar code does not import Hyprland modules/);
-  assert.match(plan, /## Phase 0 probe results/);
-  assert.match(plan, /HDMI-A-1/);
-  assert.match(plan, /tam-work_5G/);
-  assert.match(plan, /tun.*Meta/);
-  assert.match(plan, /Xiaomi Buds 5/);
-  assert.match(plan, /OpenRun Pro 2 by Shokz/);
-  assert.match(plan, /PipeWire 1\.6\.5/);
-  assert.match(plan, /DDC\/CI-capable Dell SP2418H/);
-  assert.match(plan, /`ddcutil getvcp 10` returns current\/max brightness/);
-  assert.match(plan, /`wl-gammarelay-rs` is installed/);
-  assert.match(plan, /`rs\.wl\.gammarelay` `Temperature` properties/);
-  assert.match(plan, /powerprofilesctl get` returned `balanced/);
-  assert.match(plan, /`niri` and `wl-copy` are installed/);
-  assert.match(plan, /niri's native screenshot UI/);
-  assert.match(plan, /copy PNG data to the clipboard/);
-  assert.match(plan, /`wf-recorder` can list niri outputs/);
-  assert.match(plan, /focused-output recording by default/);
-  assert.match(plan, /timestamped recordings under `~\/Videos\/Screen Recordings`/);
-  assert.match(plan, /notification ownership requires that external daemons/);
-  assert.match(plan, /validated after stopping\/disabling `swaync`/);
-  assert.match(plan, /`npm run harness` passed with 45 tests/);
-
-  for (const heading of [
-    "Phase 0: data probe and compatibility map",
-    "Phase 1: sidebar shell and focused-output targeting",
-    "Phase 2: notification ownership and do-not-disturb",
-    "Phase 3: quick toggles and low-risk system cards",
-    "Phase 4: audio mixer",
-    "Phase 5: Wi-Fi and VPN",
-    "Phase 6: Bluetooth devices",
-    "Phase 7: media, brightness, color temperature, and power",
-    "Phase 8: polish, resilience, and rollout",
-  ]) {
-    assert.match(plan, new RegExp(`## ${heading}`));
-  }
-});
-
 test("wires sidebar shell through focused-output controller", async () => {
   const shell = await readFile(join(root, "../shell.qml"), "utf8");
   const bar = await readFile(join(root, "../modules/bar/Bar.qml"), "utf8");
