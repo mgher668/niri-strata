@@ -17,7 +17,8 @@ Item {
         readonly property string appIcon: notification?.appIcon || ""
         readonly property string image: notification?.image || ""
         readonly property string urgency: notification?.urgency?.toString() || "normal"
-        readonly property var actions: notification?.actions ?? []
+        readonly property var actions: root.normalizeActions(notification?.actions ?? [])
+        readonly property bool hasActions: actions.length > 0
     }
 
     component PopupTimer: Timer {
@@ -48,6 +49,22 @@ Item {
 
     function appNameForEntry(entry) {
         return entry?.appName?.length > 0 ? entry.appName : "Application";
+    }
+
+    function normalizeActions(source) {
+        const normalized = [];
+
+        for (const action of source ?? []) {
+            const identifier = String(action?.identifier ?? "");
+            const text = String(action?.text || action?.label || identifier || "Action");
+
+            if (identifier.length === 0)
+                continue;
+
+            normalized.push({ identifier, text });
+        }
+
+        return normalized;
     }
 
     function groupsForList(source) {
@@ -221,6 +238,32 @@ Item {
             dismissNotification(id);
     }
 
+    function invokeNotificationAction(notificationId, actionIdentifier) {
+        const tracked = notificationServer.trackedNotifications?.values ?? [];
+        const serverNotification = tracked.find(notification => notification.id === notificationId);
+
+        if (!serverNotification || !serverNotification.actions) {
+            console.warn("Cannot invoke notification action; tracked notification not found:", notificationId, actionIdentifier);
+            return false;
+        }
+
+        const action = serverNotification.actions.find(item => item.identifier === actionIdentifier);
+
+        if (!action || typeof action.invoke !== "function") {
+            console.warn("Cannot invoke notification action; action not found:", notificationId, actionIdentifier);
+            return false;
+        }
+
+        try {
+            action.invoke();
+            dismissNotification(notificationId);
+            return true;
+        } catch (error) {
+            console.warn("Failed to invoke notification action:", notificationId, actionIdentifier, error);
+            return false;
+        }
+    }
+
     function timeoutPopup(notificationId) {
         const entry = notifications.find(item => item.notificationId === notificationId);
         if (!entry)
@@ -252,7 +295,19 @@ Item {
 
         for (let index = 0; index < debugSeedNotificationCount; index++) {
             const messageNumber = debugSeedNotificationCount - index;
-            const notification = {
+            const notification = index === 0 ? {
+                id: -(index + 1),
+                appName: "Authorization",
+                summary: "Confirm privileged action",
+                body: "A debug authorization notification with action buttons.",
+                appIcon: "dialog-password",
+                image: "",
+                urgency: "critical",
+                actions: [
+                    { identifier: "allow", text: "Allow" },
+                    { identifier: "deny", text: "Deny" },
+                ],
+            } : {
                 id: -(index + 1),
                 appName: "Telegram",
                 summary: `Telegram test message ${messageNumber}`,

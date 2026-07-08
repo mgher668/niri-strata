@@ -6,6 +6,7 @@ Item {
     id: root
 
     required property var notification
+    property var service: null
     property int bodyLineCount: 3
     property int cardRadius: Theme.rounding.md
     property int minimumCardHeight: 76
@@ -14,6 +15,8 @@ Item {
     readonly property int dismissThreshold: Math.min(124, Math.max(72, width * 0.34))
     readonly property string bodyText: notification.body || ""
     readonly property int clickDragTolerance: 6
+    readonly property var notificationActions: notification.actions ?? []
+    readonly property bool hasActions: notification.hasActions ?? notificationActions.length > 0
 
     signal dismissed()
 
@@ -153,6 +156,27 @@ Item {
                 elide: Text.ElideRight
                 font.pixelSize: Theme.font.sm
                 color: Theme.colors.mutedText
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                visible: root.hasActions
+                spacing: Theme.spacing.sm
+
+                Repeater {
+                    model: root.notificationActions
+
+                    ActionChip {
+                        required property var modelData
+
+                        text: modelData.text
+                        minWidth: 84
+                        icon: "touch_app"
+                        active: true
+                        enabled: root.service !== null
+                        onTriggered: root.service.invokeNotificationAction(root.notification.notificationId, modelData.identifier)
+                    }
+                }
             }
         }
     }

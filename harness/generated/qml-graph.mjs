@@ -407,6 +407,7 @@ export function qml_BrightnessPanel() {
 export function qml_DismissibleNotificationCard() {
   // modules/sidebar/DismissibleNotificationCard.qml
   const rootType = "Item";
+  qml_ActionChip();
   qml_IconButton();
   qml_NotificationAppIcon();
   qml_StyledText();
@@ -452,6 +453,7 @@ export function qml_NotificationCenter() {
 export function qml_NotificationGroupCard() {
   // modules/sidebar/NotificationGroupCard.qml
   const rootType = "Rectangle";
+  qml_ActionChip();
   qml_IconButton();
   qml_NotificationAppIcon();
   qml_StyledText();
@@ -604,5 +606,5 @@ export function qml_shell() {
 
 export const qmlGraphSummary = Object.freeze({
   files: 66,
-  relations: 205,
+  relations: 207,
 });

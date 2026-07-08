@@ -100,7 +100,11 @@ Rectangle {
             model: root.visibleNotifications
 
             Rectangle {
+                id: previewCard
+
                 required property var modelData
+                readonly property var notificationActions: modelData.actions ?? []
+                readonly property bool notificationHasActions: modelData.hasActions ?? notificationActions.length > 0
 
                 Layout.fillWidth: true
                 implicitHeight: previewContent.implicitHeight + Theme.spacing.md * 2
@@ -125,7 +129,7 @@ Rectangle {
                     }
                 }
 
-                RowLayout {
+                ColumnLayout {
                     id: previewContent
 
                     anchors {
@@ -136,39 +140,64 @@ Rectangle {
                     }
                     spacing: Theme.spacing.md
 
-                    ColumnLayout {
+                    RowLayout {
                         Layout.fillWidth: true
-                        spacing: 2
+                        spacing: Theme.spacing.md
 
-                        StyledText {
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            text: modelData.summary
-                            font.pixelSize: Theme.font.sm
-                            font.weight: Font.DemiBold
-                            color: Theme.colors.text
-                            elide: Text.ElideRight
+                            spacing: 2
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: modelData.summary
+                                font.pixelSize: Theme.font.sm
+                                font.weight: Font.DemiBold
+                                color: Theme.colors.text
+                                elide: Text.ElideRight
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                visible: modelData.body.length > 0
+                                text: modelData.body
+                                wrapMode: Text.WordWrap
+                                maximumLineCount: root.expanded || previewCard.notificationHasActions ? 2 : 1
+                                elide: Text.ElideRight
+                                font.pixelSize: Theme.font.xs
+                                color: Theme.colors.mutedText
+                            }
                         }
 
-                        StyledText {
-                            Layout.fillWidth: true
-                            visible: modelData.body.length > 0
-                            text: modelData.body
-                            wrapMode: Text.WordWrap
-                            maximumLineCount: root.expanded ? 2 : 1
-                            elide: Text.ElideRight
-                            font.pixelSize: Theme.font.xs
-                            color: Theme.colors.mutedText
+                        IconButton {
+                            size: 28
+                            icon: "close"
+                            label: "Dismiss"
+                            iconSize: 15
+                            baseColor: Theme.colors.transparent
+                            hoverColor: Theme.colors.surfaceContainerHighest
+                            onClicked: root.service.dismissNotification(modelData.notificationId)
                         }
                     }
 
-                    IconButton {
-                        size: 28
-                        icon: "close"
-                        label: "Dismiss"
-                        iconSize: 15
-                        baseColor: Theme.colors.transparent
-                        hoverColor: Theme.colors.surfaceContainerHighest
-                        onClicked: root.service.dismissNotification(modelData.notificationId)
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: previewCard.notificationHasActions
+                        spacing: Theme.spacing.sm
+
+                        Repeater {
+                            model: previewCard.notificationActions
+
+                            ActionChip {
+                                required property var modelData
+
+                                text: modelData.text
+                                minWidth: 84
+                                icon: "touch_app"
+                                active: true
+                                onTriggered: root.service.invokeNotificationAction(previewCard.modelData.notificationId, modelData.identifier)
+                            }
+                        }
                     }
                 }
             }

@@ -31,12 +31,13 @@ Each feature should be implemented harness-first:
 | 3 | Clipboard history panel | Planned | [02-clipboard-history.md](features/02-clipboard-history.md) |
 | 4 | Enhanced screenshot tooling | Planned | [04-screenshot-tooling.md](features/04-screenshot-tooling.md) |
 | 5 | Notification center redesign | Planned | [05-notification-center-redesign.md](features/05-notification-center-redesign.md) |
-| 6 | Wallpaper + Material color pipeline | Backlog | Future detail doc |
-| 7 | Color picker | Backlog | Future detail doc |
-| 8 | Idle inhibitor | Backlog | Future detail doc |
-| 9 | More complete media overlay | Backlog | Future detail doc |
-| 10 | Workspace / window overview | Backlog | Future detail doc |
-| 11 | Settings UI | Backlog | Future detail doc |
+| 6 | Notification action buttons | Planned | [06-notification-action-buttons.md](features/06-notification-action-buttons.md) |
+| 7 | Wallpaper + Material color pipeline | Backlog | Future detail doc |
+| 8 | Color picker | Backlog | Future detail doc |
+| 9 | Idle inhibitor | Backlog | Future detail doc |
+| 10 | More complete media overlay | Backlog | Future detail doc |
+| 11 | Workspace / window overview | Backlog | Future detail doc |
+| 12 | Settings UI | Backlog | Future detail doc |
 
 ## Recommended order
 

@@ -991,7 +991,6 @@ test("styles detailed sidebar panels with shared Material components", async () 
     toast: await readFile(join(root, "../modules/sidebar/NotificationToast.qml"), "utf8"),
     dismissibleNotification: await readFile(join(root, "../modules/sidebar/DismissibleNotificationCard.qml"), "utf8"),
     notificationIcon: await readFile(join(root, "../modules/common/NotificationAppIcon.qml"), "utf8"),
-    notificationImageCache: await readFile(join(root, "../modules/common/NotificationImageCache.js"), "utf8"),
     system: await readFile(join(root, "../modules/sidebar/SystemPanel.qml"), "utf8"),
   };
 
@@ -1032,17 +1031,26 @@ test("styles detailed sidebar panels with shared Material components", async () 
   assert.match(files.notificationGroup, /model:\s*root\.visibleNotifications/);
   assert.match(files.notificationGroup, /root\.service\.dismissAppNotifications\(root\.appName\)/);
   assert.match(files.notificationGroup, /root\.service\.dismissNotification\(modelData\.notificationId\)/);
+  assert.match(files.notificationGroup, /readonly property bool notificationHasActions/);
   assert.match(files.notificationGroup, /acceptedButtons:\s*Qt\.LeftButton/);
   assert.match(files.notificationGroup, /onClicked:\s*root\.service\.dismissNotification\(modelData\.notificationId\)/);
+  assert.match(files.notificationGroup, /model:\s*previewCard\.notificationActions/);
+  assert.match(files.notificationGroup, /root\.service\.invokeNotificationAction\(previewCard\.modelData\.notificationId, modelData\.identifier\)/);
   assert.match(files.toast, /DismissibleNotificationCard\s*\{/);
+  assert.match(files.toast, /DismissibleNotificationCard\s*\{[\s\S]*service:\s*root\.service/);
   assert.match(files.dismissibleNotification, /NotificationAppIcon\s*\{[\s\S]*appIcon:\s*root\.notification\.appIcon[\s\S]*image:\s*root\.notification\.image/);
   assert.match(files.dismissibleNotification, /IconButton\s*\{[\s\S]*icon:\s*"close"/);
+  assert.match(files.dismissibleNotification, /property var service:\s*null/);
+  assert.match(files.dismissibleNotification, /readonly property var notificationActions:\s*notification\.actions \?\? \[\]/);
+  assert.match(files.dismissibleNotification, /readonly property bool hasActions:\s*notification\.hasActions \?\? notificationActions\.length > 0/);
   assert.match(files.dismissibleNotification, /drag\.axis:\s*Drag\.XAxis/);
   assert.match(files.dismissibleNotification, /drag\.minimumX:\s*0/);
   assert.match(files.dismissibleNotification, /property bool dragMoved:\s*false/);
   assert.match(files.dismissibleNotification, /readonly property int clickDragTolerance:\s*6/);
   assert.match(files.dismissibleNotification, /if \(Math\.abs\(card\.x\) > root\.clickDragTolerance\)[\s\S]*root\.dragMoved = true/);
   assert.match(files.dismissibleNotification, /onClicked:\s*\{[\s\S]*if \(!root\.dragMoved\)[\s\S]*root\.requestDismiss\(false\)/);
+  assert.match(files.dismissibleNotification, /model:\s*root\.notificationActions/);
+  assert.match(files.dismissibleNotification, /root\.service\.invokeNotificationAction\(root\.notification\.notificationId, modelData\.identifier\)/);
   assert.match(files.dismissibleNotification, /readonly property int dismissThreshold/);
   assert.match(files.dismissibleNotification, /Behavior on x/);
   assert.match(files.dismissibleNotification, /signal dismissed\(\)/);
@@ -1053,15 +1061,13 @@ test("styles detailed sidebar panels with shared Material components", async () 
   assert.match(files.notificationIcon, /property string appIcon/);
   assert.match(files.notificationIcon, /property string image/);
   assert.match(files.notificationIcon, /property bool imageLoadFailed:\s*false/);
-  assert.match(files.notificationIcon, /import "NotificationImageCache\.js" as NotificationImageCache/);
-  assert.match(files.notificationIcon, /readonly property bool showImage:\s*hasImage && !imageLoadFailed && !NotificationImageCache\.hasFailed\(image\)/);
-  assert.match(files.notificationIcon, /onImageChanged:\s*imageLoadFailed = NotificationImageCache\.hasFailed\(image\)/);
-  assert.match(files.notificationIcon, /if \(status === Image\.Error\)[\s\S]*NotificationImageCache\.markFailed\(root\.image\)[\s\S]*root\.imageLoadFailed = true/);
+  assert.match(files.notificationIcon, /readonly property bool showImage:\s*hasImage && !imageLoadFailed/);
+  assert.match(files.notificationIcon, /onImageChanged:\s*imageLoadFailed = false/);
+  assert.match(files.notificationIcon, /cache:\s*true/);
+  assert.match(files.notificationIcon, /if \(status === Image\.Ready\)[\s\S]*root\.imageLoadFailed = false/);
+  assert.match(files.notificationIcon, /else if \(status === Image\.Error\)[\s\S]*root\.imageLoadFailed = true/);
   assert.match(files.notificationIcon, /Quickshell\.iconPath\(root\.appIcon, "image-missing"\)/);
   assert.match(files.notificationIcon, /MaterialIcon\s*\{/);
-  assert.match(files.notificationImageCache, /\.pragma library/);
-  assert.match(files.notificationImageCache, /function hasFailed\(source\)/);
-  assert.match(files.notificationImageCache, /function markFailed\(source\)/);
   assert.match(files.system, /SectionHeader\s*\{[\s\S]*icon:\s*"settings"/);
   assert.match(files.system, /MaterialIcon\s*\{[\s\S]*name:\s*tile\.icon/);
   assert.match(files.system, /readonly property string pendingAction/);
@@ -1088,12 +1094,19 @@ test("wires notification ownership into sidebar and focused-output toasts", asyn
   assert.match(notifications, /property bool doNotDisturb:\s*false/);
   assert.match(notifications, /property int maxHistoryCount:\s*Config\.notifications\.maxHistoryCount/);
   assert.match(notifications, /property int maxHistoryPerApp:\s*Config\.notifications\.maxHistoryPerApp/);
+  assert.match(notifications, /readonly property var actions:\s*root\.normalizeActions\(notification\?\.actions \?\? \[\]\)/);
+  assert.match(notifications, /readonly property bool hasActions:\s*actions\.length > 0/);
   assert.match(notifications, /readonly property var groupsByAppName:\s*groupsForList\(notifications\)/);
   assert.match(notifications, /readonly property list<string> appNameList:\s*appNameListForGroups\(groupsByAppName\)/);
+  assert.match(notifications, /function normalizeActions\(source\)/);
   assert.match(notifications, /function groupsForList\(source\)/);
   assert.match(notifications, /function groupForApp\(appName\)/);
   assert.match(notifications, /function cappedEntries\(entries, dismissDropped\)/);
   assert.match(notifications, /function dismissAppNotifications\(appName\)/);
+  assert.match(notifications, /function invokeNotificationAction\(notificationId, actionIdentifier\)/);
+  assert.match(notifications, /const action = serverNotification\.actions\.find\(item => item\.identifier === actionIdentifier\)/);
+  assert.match(notifications, /action\.invoke\(\)/);
+  assert.match(notifications, /dismissNotification\(notificationId\)/);
   assert.match(notifications, /popup:\s*!doNotDisturb/);
   assert.match(notifications, /function toggleDoNotDisturb\(\)/);
   assert.match(notifications, /function clearAll\(\)/);
@@ -1107,6 +1120,9 @@ test("wires notification ownership into sidebar and focused-output toasts", asyn
   assert.match(center, /root\.service\.clearAll\(\)/);
   assert.match(groupCard, /root\.service\.dismissNotification\(modelData\.notificationId\)/);
   assert.match(groupCard, /root\.service\.dismissAppNotifications\(root\.appName\)/);
+  assert.match(groupCard, /acceptedButtons:\s*Qt\.LeftButton/);
+  assert.match(groupCard, /onClicked:\s*root\.service\.dismissNotification\(modelData\.notificationId\)/);
+  assert.match(groupCard, /root\.service\.invokeNotificationAction\(previewCard\.modelData\.notificationId, modelData\.identifier\)/);
   assert.doesNotMatch(sidebar, /maxPanelHeight:/);
   assert.match(center, /ListView\s*\{[\s\S]*model:\s*root\.service\.appNameList/);
   assert.match(center, /implicitHeight:\s*contentHeight/);
@@ -1137,19 +1153,22 @@ test("wires notification ownership into sidebar and focused-output toasts", asyn
   assert.match(toast, /margins\s*\{[\s\S]*top:\s*Config\.bar\.height \+ Config\.bar\.margin \* 2/);
   assert.doesNotMatch(toast, /topMargin:\s*Config\.bar\.height \+ Config\.bar\.margin \* 2/);
   assert.match(toast, /DismissibleNotificationCard\s*\{[\s\S]*bodyLineCount:\s*2/);
+  assert.match(toast, /DismissibleNotificationCard\s*\{[\s\S]*service:\s*root\.service/);
   assert.match(toast, /root\.service\.dismissNotification\(modelData\.notificationId\)/);
   assert.doesNotMatch(toast, /implicitHeight:\s*modelData\.height/);
   assert.doesNotMatch(toast, /bottom:\s*true/);
   assert.match(card, /function settleSwipe\(\)/);
   assert.match(card, /card\.x >= dismissThreshold/);
   assert.match(card, /property bool dragMoved:\s*false/);
+  assert.match(card, /readonly property bool hasActions:\s*notification\.hasActions \?\? notificationActions\.length > 0/);
   assert.match(card, /onClicked:\s*\{[\s\S]*if \(!root\.dragMoved\)[\s\S]*root\.requestDismiss\(false\)/);
+  assert.match(card, /root\.service\.invokeNotificationAction\(root\.notification\.notificationId, modelData\.identifier\)/);
   assert.match(card, /onReleased:\s*\{[\s\S]*if \(root\.dragMoved\)[\s\S]*root\.settleSwipe\(\)/);
   assert.match(card, /requestDismiss\(true\)/);
   assert.match(card, /requestDismiss\(false\)/);
   assert.match(card, /drag\.maximumX:\s*root\.width \* 0\.58/);
-  assert.match(icon, /NotificationImageCache\.hasFailed\(image\)/);
   assert.match(icon, /Image\s*\{[\s\S]*source:\s*root\.showImage \? root\.image : ""/);
+  assert.match(icon, /cache:\s*true/);
   assert.match(icon, /Quickshell\.iconPath\(root\.appIcon, "image-missing"\)/);
   assert.doesNotMatch(notifications, /FileView|setText|write/);
   assert.doesNotMatch(toast, /Quickshell\.Hyprland/);

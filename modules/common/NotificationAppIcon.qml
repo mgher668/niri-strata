@@ -2,7 +2,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Widgets
 import "."
-import "NotificationImageCache.js" as NotificationImageCache
 
 Item {
     id: root
@@ -16,7 +15,7 @@ Item {
 
     readonly property bool hasAppIcon: appIcon.length > 0
     readonly property bool hasImage: image.length > 0
-    readonly property bool showImage: hasImage && !imageLoadFailed && !NotificationImageCache.hasFailed(image)
+    readonly property bool showImage: hasImage && !imageLoadFailed
     readonly property bool critical: urgency === "critical"
 
     function fallbackIcon() {
@@ -39,7 +38,7 @@ Item {
     implicitWidth: size
     implicitHeight: size
 
-    onImageChanged: imageLoadFailed = NotificationImageCache.hasFailed(image)
+    onImageChanged: imageLoadFailed = false
 
     Rectangle {
         id: iconFrame
@@ -57,11 +56,12 @@ Item {
             source: root.showImage ? root.image : ""
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
-            cache: false
+            cache: true
             smooth: true
             onStatusChanged: {
-                if (status === Image.Error) {
-                    NotificationImageCache.markFailed(root.image);
+                if (status === Image.Ready) {
+                    root.imageLoadFailed = false;
+                } else if (status === Image.Error) {
                     root.imageLoadFailed = true;
                 }
             }

@@ -59,6 +59,7 @@ Scope {
 
                         width: parent.width
                         notification: modelData
+                        service: root.service
                         bodyLineCount: 2
                         cardRadius: Theme.rounding.lg
                         minimumCardHeight: 82
