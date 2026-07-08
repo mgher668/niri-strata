@@ -160,12 +160,18 @@ export function normalizeState(rawState) {
   };
 }
 
-export function focusWorkspaceFallbackCommand(workspace) {
-  const reference = workspace.name && String(workspace.name).trim().length > 0
+export function workspaceReference(workspace) {
+  return workspace.name && String(workspace.name).trim().length > 0
     ? workspace.name
     : String(workspace.idx);
+}
 
-  return ["niri", "msg", "action", "focus-workspace", reference];
+export function focusWorkspaceFallbackCommand(workspace) {
+  return ["niri", "msg", "action", "focus-workspace", workspaceReference(workspace)];
+}
+
+export function moveWorkspaceToIndexCommand(workspace, targetIndex) {
+  return ["niri", "msg", "action", "move-workspace-to-index", String(targetIndex), "--reference", workspaceReference(workspace)];
 }
 
 export function focusWindowCommand(windowOrId) {

@@ -9,6 +9,7 @@ import {
   focusWindowCommand,
   focusWorkspaceFallbackCommand,
   groupWorkspacesByOutput,
+  moveWorkspaceToIndexCommand,
   normalizeFocusedOutput,
   normalizeState,
   normalizeWindow,
@@ -273,6 +274,18 @@ test("generates niri workspace fallback commands using index or name, not unsupp
   assert.deepEqual(
     focusWorkspaceFallbackCommand({ id: 7, idx: 2, name: "chat" }),
     ["niri", "msg", "action", "focus-workspace", "chat"],
+  );
+});
+
+test("generates niri workspace reorder command using target workspace idx", () => {
+  assert.deepEqual(
+    moveWorkspaceToIndexCommand({ id: 4, idx: 6, name: null }, 2),
+    ["niri", "msg", "action", "move-workspace-to-index", "2", "--reference", "6"],
+  );
+
+  assert.deepEqual(
+    moveWorkspaceToIndexCommand({ id: 7, idx: 3, name: "chat" }, 1),
+    ["niri", "msg", "action", "move-workspace-to-index", "1", "--reference", "chat"],
   );
 });
 

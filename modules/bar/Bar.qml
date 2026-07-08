@@ -17,7 +17,7 @@ PanelWindow {
     required property var trayState
 
     property bool bottom: Config.bar.position === "bottom"
-    property bool floating: Config.bar.style === "floating"
+    property bool floating: false
 
     screen: bar.barScreen
 
@@ -27,95 +27,97 @@ PanelWindow {
         left: true
         right: true
     }
-    implicitHeight: Config.bar.height + (bar.floating ? Config.bar.margin * 2 : 0)
-    exclusiveZone: Config.bar.height + (bar.floating ? Config.bar.margin : 0)
+    implicitHeight: Config.bar.height
+    exclusiveZone: Config.bar.height
     color: "transparent"
 
-    Rectangle {
-        id: background
+    // Detect if focused window is maximized (non-floating) to flatten bar shape.
+    readonly property bool hasMaximizedWindow: {
+        var win = bar.state.focusedWindow;
+        if (!win || !win.title)
+            return false;
+        return !win.isFloating;
+    }
+
+    BarCanvas {
+        id: canvas
+        anchors.fill: parent
+        bgColor: Config.bar.showBackground ? Theme.colors.surfaceContainerLow : "transparent"
+        borderColor: Theme.colors.outlineVariant
+        showBorder: Config.bar.showBackground
+        borderThickness: Theme.elevation.outlineWidth
+        wingRadius: 8
+        bottomRadius: Theme.rounding.sm
+        hasMaximizedWindow: bar.hasMaximizedWindow
+    }
+
+    RowLayout {
+        id: content
         anchors {
-            left: parent.left
-            right: parent.right
-            top: bar.bottom ? undefined : parent.top
-            bottom: bar.bottom ? parent.bottom : undefined
-            margins: bar.floating ? Config.bar.margin : 0
-            leftMargin: bar.floating ? Config.bar.sideMargin : 0
-            rightMargin: bar.floating ? Config.bar.sideMargin : 0
+            fill: parent
+            leftMargin: Config.bar.sideMargin
+            rightMargin: Config.bar.sideMargin
         }
-        height: Config.bar.height
-        color: Config.bar.showBackground ? Theme.colors.surfaceContainerLow : "transparent"
-        radius: bar.floating ? Theme.rounding.xl : 0
-        border.width: Config.bar.showBackground ? Theme.elevation.outlineWidth : 0
-        border.color: Theme.colors.outlineVariant
+        spacing: Config.bar.groupSpacing
 
-        RowLayout {
-            id: content
-            anchors {
-                fill: parent
-                leftMargin: Config.bar.sideMargin
-                rightMargin: Config.bar.sideMargin
+        BarGroup {
+            Layout.alignment: Qt.AlignVCenter
+            paddingX: 8
+            Workspaces {
+                state: bar.state
+                outputName: bar.barScreen.name
             }
-            spacing: Config.bar.groupSpacing
+        }
 
-            BarGroup {
-                Layout.alignment: Qt.AlignVCenter
-                paddingX: 8
-                Workspaces {
-                    state: bar.state
-                    outputName: bar.barScreen.name
-                }
-            }
+        Item {
+            Layout.fillWidth: true
+        }
 
-            Item {
+        BarGroup {
+            Layout.alignment: Qt.AlignVCenter
+            Layout.preferredWidth: Math.min(520, Math.max(160, implicitWidth))
+
+            ActiveWindow {
                 Layout.fillWidth: true
+                state: bar.state
             }
+        }
 
-            BarGroup {
+        Item {
+            Layout.fillWidth: true
+        }
+
+        BarGroup {
+            Layout.alignment: Qt.AlignVCenter
+            SysTray {
                 Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: Math.min(520, Math.max(160, implicitWidth))
-
-                ActiveWindow {
-                    Layout.fillWidth: true
-                    state: bar.state
-                }
+                trayState: bar.trayState
+                outputName: bar.barScreen.name
             }
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            BarGroup {
+            BatteryIndicator {
                 Layout.alignment: Qt.AlignVCenter
-                SysTray {
-                    Layout.alignment: Qt.AlignVCenter
-                    trayState: bar.trayState
-                    outputName: bar.barScreen.name
-                }
-                BatteryIndicator {
-                    Layout.alignment: Qt.AlignVCenter
-                    service: bar.batteryService
-                }
-                AudioIndicator {
-                    Layout.alignment: Qt.AlignVCenter
-                    service: bar.audioService
-                }
-                NetworkIndicator {
-                    Layout.alignment: Qt.AlignVCenter
-                    service: bar.networkService
-                }
-                Resources {
-                    Layout.alignment: Qt.AlignVCenter
-                    service: bar.resourceService
-                }
-                Clock {
-                    Layout.alignment: Qt.AlignVCenter
-                    service: bar.clockService
-                }
-                SidebarButton {
-                    Layout.alignment: Qt.AlignVCenter
-                    controller: bar.sidebarController
-                    outputName: bar.barScreen.name
-                }
+                service: bar.batteryService
+            }
+            AudioIndicator {
+                Layout.alignment: Qt.AlignVCenter
+                service: bar.audioService
+            }
+            NetworkIndicator {
+                Layout.alignment: Qt.AlignVCenter
+                service: bar.networkService
+            }
+            Resources {
+                Layout.alignment: Qt.AlignVCenter
+                service: bar.resourceService
+            }
+            Clock {
+                Layout.alignment: Qt.AlignVCenter
+                service: bar.clockService
+            }
+            SidebarButton {
+                Layout.alignment: Qt.AlignVCenter
+                controller: bar.sidebarController
+                outputName: bar.barScreen.name
             }
         }
     }

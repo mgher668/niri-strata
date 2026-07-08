@@ -7,11 +7,10 @@ QtObject {
         property string position: "top"
         property string style: "floating"
         property bool showBackground: true
-        property int height: 46
-        property int margin: 8
-        property int sideMargin: 14
-        property int groupSpacing: 10
-        property int iconButtonSize: 34
+        property int height: 34
+        property int iconButtonSize: 26
+        property int sideMargin: 10
+        property int groupSpacing: 8
     }
 
     readonly property QtObject sidebar: QtObject {

@@ -26,7 +26,7 @@ Item {
 
         MaterialIcon {
             name: "schedule"
-            size: 18
+            size: 15
             iconColor: Theme.colors.primary
         }
 

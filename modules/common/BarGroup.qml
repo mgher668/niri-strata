@@ -6,14 +6,14 @@ Rectangle {
     id: root
 
     property int paddingX: 10
-    property int paddingY: 4
+    property int paddingY: 2
     property bool hovered: mouseArea.containsMouse
     property color baseColor: Theme.colors.surfaceContainer
     property color hoverColor: Theme.colors.surfaceContainerHigh
     default property alias content: contentLayout.children
 
     implicitWidth: contentLayout.implicitWidth + paddingX * 2
-    implicitHeight: Config.bar.height - Theme.spacing.sm
+    implicitHeight: Config.bar.height
     radius: Theme.rounding.full
     color: hovered ? hoverColor : baseColor
 

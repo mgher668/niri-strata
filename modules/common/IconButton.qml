@@ -12,7 +12,7 @@ Item {
     property bool filled: active
     property bool enabled: true
     property int size: Config.bar.iconButtonSize
-    property int iconSize: 20
+    property int iconSize: 15
     property color baseColor: Theme.colors.transparent
     property color hoverColor: Theme.colors.surfaceContainerHigh
     property color activeColor: Theme.colors.primaryContainer

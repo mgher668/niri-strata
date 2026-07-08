@@ -1,11 +1,13 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
 Item {
     id: root
 
     required property var niri
 
+    readonly property string socketPath: Quickshell.env("NIRI_SOCKET")
     property var eventWorkspaces: []
     property var eventWindows: []
     property var eventFocusedOutput: null
@@ -357,6 +359,58 @@ Item {
 
     function focusWorkspaceDown() {
         focusWorkspaceByStep(1);
+    }
+
+    Socket {
+        id: requestSocket
+        path: root.socketPath
+        connected: root.socketPath.length > 0
+    }
+
+    function sendNiriRequest(request) {
+        if (!root.socketPath || root.socketPath.length === 0 || !requestSocket.connected)
+            return false;
+
+        try {
+            const message = JSON.stringify(request) + "\n";
+            requestSocket.write(message);
+            requestSocket.flush();
+            return true;
+        } catch (error) {
+            console.warn("niri socket request failed:", error);
+            return false;
+        }
+    }
+
+    function moveWorkspaceToIndex(workspace, targetIndex) {
+        if (!workspace || targetIndex === null || targetIndex === undefined)
+            return;
+
+        if (workspace.id !== null && workspace.id !== undefined) {
+            const sent = sendNiriRequest({
+                "Action": {
+                    "MoveWorkspaceToIndex": {
+                        "index": targetIndex,
+                        "reference": {
+                            "Id": workspace.id
+                        }
+                    }
+                }
+            });
+            if (sent)
+                return;
+
+            if (niri && typeof niri.focusWorkspaceById === "function") {
+                niri.focusWorkspaceById(workspace.id);
+                Qt.callLater(() => {
+                    Quickshell.execDetached(["niri", "msg", "action", "move-workspace-to-index", String(targetIndex)]);
+                });
+                return;
+            }
+        }
+
+        const ref = workspaceReference(workspace);
+        Quickshell.execDetached(["niri", "msg", "action", "move-workspace-to-index", String(targetIndex), "--reference", ref]);
     }
 
     function focusWindow(window) {
