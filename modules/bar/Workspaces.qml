@@ -15,14 +15,14 @@ Item {
         : state.workspaces
 
     // Pill sizing
-    readonly property real pillHeight: 22
-    readonly property real activeWidth: 48
+    readonly property real pillHeight: SettingsData.workspacePillHeight
+    readonly property real activeWidth: SettingsData.workspaceActiveWidth
     readonly property real inactiveDiameter: pillHeight
-    readonly property real pillSpacing: 4
+    readonly property real pillSpacing: SettingsData.workspacePillSpacing
     readonly property real pillRadius: 10
-    readonly property int workspaceMotionDuration: 200
-    readonly property int workspaceQuickMotionDuration: 120
-    readonly property int workspaceDragPreviewDuration: 90
+    readonly property int workspaceMotionDuration: SettingsData.workspaceAnimationDuration
+    readonly property int workspaceQuickMotionDuration: SettingsData.workspaceQuickAnimationDuration
+    readonly property int workspaceDragPreviewDuration: SettingsData.workspaceDragPreviewDuration
     readonly property int workspaceMotionCadenceMs: 260
     readonly property int workspaceMotionEasingType: Easing.InOutCubic
 
@@ -381,12 +381,12 @@ Item {
                             return;
 
                         const rawOffset = pointerX(mouse) - pressX;
-                        if (!root.dragActive) {
-                            if (Math.abs(rawOffset) < dragThreshold)
-                                return;
+                        if (!SettingsData.workspaceDragReorder)
+                            return;
+                        if (Math.abs(rawOffset) < dragThreshold)
+                            return;
 
-                            root.beginDrag(delegate.visualIndex);
-                        }
+                        root.beginDrag(delegate.visualIndex);
 
                         if (root.dragSourceIndex !== delegate.visualIndex)
                             return;

@@ -9,6 +9,7 @@ import "./modules/common/"
 import "./modules/bar/"
 import "./modules/services/"
 import "./modules/sidebar/"
+import "./modules/settings/"
 import "./modules/launcher/"
 
 ShellRoot{
@@ -125,10 +126,15 @@ ShellRoot{
         appSearch: appSearch
         systemActions: systemActions
         sidebarController: sidebarState
+        settingsController: settingsController
     }
 
     TrayState {
         id: trayStateService
+    }
+
+    SettingsController {
+        id: settingsController
     }
 
     IpcHandler {
@@ -157,6 +163,16 @@ ShellRoot{
         function hideBarIcons(): string { trayStateService.hideBarIcons(); return "hidden"; }
         function barIconsVisible(): bool { return trayStateService.barIconsVisible; }
         function debug(): string { return trayStateService.debugSummary(); }
+    }
+
+    IpcHandler {
+        target: "settings"
+
+        function toggle(): void { settingsController.toggle(""); }
+        function open(): void { settingsController.openSettings(""); }
+        function close(): void { settingsController.close(); }
+        function isOpen(): bool { return settingsController.open; }
+        function showTab(tabName: string): void { settingsController.showTab(tabName); }
     }
 
     Variants {
@@ -217,6 +233,16 @@ ShellRoot{
 
         component: VolumeOsd {
             service: shellRoot.audioStatusService
+        }
+    }
+
+    LazyLoader {
+        active: settingsController.open
+
+        component: SettingsWindow {
+            controller: settingsController
+            settingsData: SettingsData
+            captureService: capture
         }
     }
 }

@@ -33,6 +33,8 @@ PanelWindow {
 
     // Detect if focused window is maximized (non-floating) to flatten bar shape.
     readonly property bool hasMaximizedWindow: {
+        if (!SettingsData.barFlattenOnMaximized)
+            return false;
         var win = bar.state.focusedWindow;
         if (!win || !win.title)
             return false;
@@ -46,8 +48,8 @@ PanelWindow {
         borderColor: Theme.colors.outlineVariant
         showBorder: Config.bar.showBackground
         borderThickness: Theme.elevation.outlineWidth
-        wingRadius: 8
-        bottomRadius: Theme.rounding.sm
+        wingRadius: SettingsData.barWingRadius
+        bottomRadius: SettingsData.barBottomRadius
         hasMaximizedWindow: bar.hasMaximizedWindow
     }
 

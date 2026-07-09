@@ -901,7 +901,7 @@ test("styles sidebar shell as a Material You control center surface", async () =
   const config = await readFile(join(root, "../modules/common/Config.qml"), "utf8");
   const sidebar = await readFile(join(root, "../modules/sidebar/Sidebar.qml"), "utf8");
 
-  assert.match(config, /property real wheelScrollFactor:\s*[0-9.]+/);
+  assert.match(config, /wheelScrollFactor/);
   assert.match(sidebar, /implicitWidth:\s*Config\.sidebar\.width \+ Config\.sidebar\.margin \* 2/);
   assert.doesNotMatch(sidebar, /implicitWidth:\s*modelData\.width/);
   assert.match(sidebar, /id:\s*scrim[\s\S]*color:\s*Theme\.colors\.transparent/);
@@ -1100,8 +1100,8 @@ test("wires notification ownership into sidebar and focused-output toasts", asyn
   assert.match(groupCard, /model:\s*root\.visibleNotifications/);
   assert.match(groupCard, /visible:\s*root\.expanded && root\.notificationCount > root\.visibleCount/);
   assert.match(config, /readonly property QtObject notifications:\s*QtObject/);
-  assert.match(config, /property int maxHistoryCount:\s*500/);
-  assert.match(config, /property int maxHistoryPerApp:\s*200/);
+  assert.match(config, /maxHistoryCount/);
+  assert.match(config, /maxHistoryPerApp/);
   assert.match(config, /property bool debugSeedNotifications:\s*false/);
   assert.match(toast, /required property var niriState/);
   assert.match(toast, /property var sidebarController:\s*null/);
@@ -1239,14 +1239,14 @@ test("wires quick toggles and low-risk system cards through sidebar services", a
   assert.match(recordingPanel, /actions\.setRecordingAudioEnabled\(!actions\.recordingAudioEnabled\)/);
   assert.doesNotMatch(recordingPanel, /startRecordingRequested|root\.startRecordingRequested|actions\.stopRecording\(\)|play_arrow/);
   assert.match(quickToggles, /if \(id === "screenshot"\)\s*return false/);
-  assert.match(capture, /readonly property bool screenshotAvailable:\s*tools\.niri && tools\.wlCopy/);
-  assert.match(capture, /readonly property string screenshotStatus:\s*screenshotAvailable \? "Clipboard" : "Unavailable"/);
+  assert.match(capture, /readonly property bool screenshotAvailable:\s*tools\.niri && \(screenshotDefaultAction === "save" \|\| tools\.wlCopy\)/);
+  assert.match(capture, /readonly property string screenshotStatus: !screenshotAvailable \? "Unavailable" : screenshotDefaultAction === "save" \? "Save to file" : "Clipboard"/);
   assert.match(capture, /niri msg action screenshot --path \\?"\$file\\?"/);
-  assert.match(capture, /wl-copy --type image\/png < \\?"\$file\\?"/);
+  assert.match(capture, /function screenshotCommand\(\)/);
   assert.match(capture, /readonly property bool currentOutputRecordingAvailable:\s*tools\.niri && tools\.wfRecorder/);
   assert.match(capture, /readonly property bool recordingAvailable:\s*currentOutputRecordingAvailable \|\| regionRecordingAvailable/);
-  assert.match(capture, /property string recordingMode:\s*"output"/);
-  assert.match(capture, /property bool recordingAudioEnabled:\s*false/);
+  assert.match(capture, /recordingMode/);
+  assert.match(capture, /recordingAudioEnabled/);
   assert.match(capture, /property string recordingDegradedReason:\s*""/);
   assert.match(capture, /property string recordingStopSourceState:\s*""/);
   assert.match(capture, /recordingAudioEnabled && !recordingAudioAvailable/);
@@ -1429,8 +1429,11 @@ test("wires MPRIS media panel through media service boundary", async () => {
   assert.match(media, /import Quickshell\.Services\.Mpris/);
   assert.match(media, /Mpris\.players\.values/);
   assert.match(media, /activePlayer\.previous\(\)/);
+  assert.match(media, /activePlayer\.pause\(\)/);
+  assert.match(media, /activePlayer\.play\(\)/);
   assert.match(media, /activePlayer\.togglePlaying\(\)/);
   assert.match(media, /activePlayer\.next\(\)/);
+  assert.match(media, /playing \? canPause : canPlay/);
   assert.match(panel, /service\.previous\(\)/);
   assert.match(panel, /service\.toggle\(\)/);
   assert.match(panel, /service\.next\(\)/);

@@ -1,11 +1,12 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../common/"
 
 Item {
     id: root
 
-    readonly property bool screenshotAvailable: tools.niri && tools.wlCopy
+    readonly property bool screenshotAvailable: tools.niri && (screenshotDefaultAction === "save" || tools.wlCopy)
     readonly property bool currentOutputRecordingAvailable: tools.niri && tools.wfRecorder
     readonly property bool regionRecordingAvailable: tools.slurp && tools.wfRecorder
     readonly property bool recordingAvailable: currentOutputRecordingAvailable || regionRecordingAvailable
@@ -13,15 +14,18 @@ Item {
     readonly property bool recordingActive: recordingState === "selectingRegion" || recordingState === "recordingRegion" || recordingState === "recordingOutput" || recordingState === "stopping"
     readonly property bool regionRecordingActive: recordingState === "selectingRegion" || recordingState === "recordingRegion"
     readonly property bool regionRecordingStarting: recordingState === "selectingRegion"
-    readonly property string screenshotStatus: screenshotAvailable ? "Clipboard" : "Unavailable"
+    readonly property string screenshotStatus: !screenshotAvailable ? "Unavailable" : screenshotDefaultAction === "save" ? "Save to file" : "Clipboard"
     readonly property string recordingStatus: recordingStatusText()
     readonly property string regionRecordingStatus: regionRecordingAvailable ? "Region ready" : "Region unavailable"
 
     property string recordingState: "idle"
-    property string recordingMode: "output"
-    property bool recordingAudioEnabled: false
+    // Idle default from SettingsData; do not mutate during active recording
+    property string recordingMode: SettingsData.recordingDefaultMode
+    property bool recordingAudioEnabled: SettingsData.recordingAudioEnabled
     property string recordingDegradedReason: ""
     property string recordingSavePath: ""
+    property string recordingSaveDir: SettingsData.recordingSaveDir
+    property string screenshotDefaultAction: SettingsData.screenshotDefaultAction
     property string recordingLastError: ""
     property string recordingStopSourceState: ""
     property string audioMonitorSource: ""
@@ -171,15 +175,12 @@ exec wf-recorder -g "$geometry"${audioArg} -f "$file"`;
 printf 'file=%s\\n' "$file"
 exec wf-recorder -o "$output"${audioArg} -f "$file"`;
         }
+        const dir = recordingSaveDir && recordingSaveDir.length > 0 ? recordingSaveDir : "$HOME/Videos/Screen Recordings";
 
         return [
             "bash",
             "-lc",
-            `set -euo pipefail
-dir="$HOME/Videos/Screen Recordings"
-mkdir -p "$dir"
-file="$dir/${filePrefix}-$(date +%Y%m%d-%H%M%S).mp4"
-${target}`,
+            "set -euo pipefail\ndir=\"" + dir + "\"\nmkdir -p \"$dir\"\nfile=\"$dir/" + filePrefix + "-$(date +%Y%m%d-%H%M%S).mp4\"\n" + target,
         ];
     }
 
@@ -210,6 +211,38 @@ ${target}`,
 
         recordingState = "idle";
         recordingStopSourceState = "";
+    }
+
+    function screenshotCommand() {
+        const saveDir = recordingSaveDir;
+        const dirArg = saveDir && saveDir.length > 0 ? quoteShell(saveDir) : "\"$HOME/Pictures/Screenshots\"";
+
+        if (screenshotDefaultAction === "save") {
+            return [
+                "bash",
+                "-lc",
+                `set -euo pipefail
+dir=${dirArg}
+mkdir -p "$dir"
+file="$dir/screenshot-$(date +%Y%m%d-%H%M%S).png"
+niri msg action screenshot --path "$file"
+for _ in $(seq 1 900); do
+    if [ -s "$file" ]; then
+        printf 'file=%s\\n' "$file"
+        exit 0
+    fi
+    sleep 0.1
+done
+rm -f "$file"
+exit 1`,
+            ];
+        }
+
+        return [
+            "bash",
+            "-lc",
+            "set -euo pipefail\n(\n    file=\"$(mktemp \"${XDG_RUNTIME_DIR:-/tmp}/niri-screenshot-XXXXXX.png\")\"\n    rm -f \"$file\"\n    niri msg action screenshot --path \"$file\"\n    for _ in $(seq 1 900); do\n        if [ -s \"$file\" ]; then\n            wl-copy --type image/png < \"$file\"\n            rm -f \"$file\"\n            exit 0\n        fi\n        sleep 0.1\n    done\n    rm -f \"$file\"\n) >/dev/null 2>&1 </dev/null &",
+        ];
     }
 
     function takeScreenshot() {
@@ -371,11 +404,15 @@ ${target}`,
 
     Process {
         id: screenshotProcess
-        command: [
-            "bash",
-            "-lc",
-            "set -euo pipefail\n(\n    file=\"$(mktemp \"${XDG_RUNTIME_DIR:-/tmp}/niri-screenshot-XXXXXX.png\")\"\n    rm -f \"$file\"\n    niri msg action screenshot --path \"$file\"\n    for _ in $(seq 1 900); do\n        if [ -s \"$file\" ]; then\n            wl-copy --type image/png < \"$file\"\n            rm -f \"$file\"\n            exit 0\n        fi\n        sleep 0.1\n    done\n    rm -f \"$file\"\n) >/dev/null 2>&1 </dev/null &",
-        ]
+        command: screenshotCommand()
+        stdout: StdioCollector {
+            onStreamFinished: {
+                for (const rawLine of text.split("\n")) {
+                    if (rawLine.startsWith("file="))
+                        root.notify("Screenshot saved", rawLine.slice(5));
+                }
+            }
+        }
         stderr: StdioCollector {
             onStreamFinished: {
                 const message = text.trim();

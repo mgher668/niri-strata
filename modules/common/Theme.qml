@@ -1,41 +1,77 @@
 pragma Singleton
 
 import QtQuick
+import "ThemePresets.js" as Presets
 
 QtObject {
+    id: root
+
+    // --- Theme resolution ---
+    // Reads themeId and themeMode from SettingsData, resolves to a color palette.
+    // Falls back to "default" / "dark" when SettingsData is unavailable.
+
+    readonly property bool _isLight: {
+        if (typeof SettingsData === "undefined")
+            return false;
+        var mode = SettingsData.themeMode;
+        if (mode === "auto")
+            return Qt.styleHints.colorScheme === Qt.Light;
+        return mode === "light";
+    }
+
+    readonly property string _themeId: {
+        if (typeof SettingsData === "undefined")
+            return "default";
+        return SettingsData.themeId || "default";
+    }
+
+    readonly property string _accentColor: {
+        if (typeof SettingsData === "undefined")
+            return "";
+        return SettingsData.accentColor || "";
+    }
+
+    readonly property var _basePalette: Presets.getPreset(_themeId, _isLight)
+
+    readonly property var _palette: Presets.applyAccent(_basePalette, _accentColor)
+
     readonly property QtObject colors: QtObject {
-        property color background: "#101418"
-        property color surface: "#101418"
-        property color layer0: "#171c20"
-        property color layer1: "#1d2328"
-        property color layer1Hover: "#283038"
-        property color layer1Active: "#333d45"
-        property color surfaceContainerLowest: "#0b0f12"
-        property color surfaceContainerLow: "#171c20"
-        property color surfaceContainer: "#1d2328"
-        property color surfaceContainerHigh: "#273038"
-        property color surfaceContainerHighest: "#323c45"
-        property color text: "#e2e8ee"
-        property color mutedText: "#bcc7d0"
-        property color subtleText: "#89959f"
-        property color primary: "#9bd4ff"
-        property color primaryText: "#00344f"
-        property color primaryContainer: "#164b68"
-        property color primaryContainerText: "#cce7ff"
-        property color secondary: "#c0c8d2"
-        property color secondaryContainer: "#3f4850"
-        property color secondaryContainerText: "#dce4ec"
-        property color tertiary: "#dbc0ff"
-        property color tertiaryContainer: "#55406f"
-        property color tertiaryContainerText: "#eddcff"
-        property color successColor: "#9ed9b3"
-        property color successContainer: "#1f5234"
-        property color warningColor: "#f3cf7a"
-        property color warningContainer: "#5a471b"
-        property color errorColor: "#ffb4ab"
-        property color errorContainer: "#73342d"
-        property color outline: "#414b54"
-        property color outlineVariant: "#303941"
+        property color background: root._palette.background
+        property color surface: root._palette.surface
+        property color layer0: root._palette.layer0
+        property color layer1: root._palette.layer1
+        property color layer1Hover: root._palette.layer1Hover
+        property color layer1Active: root._palette.layer1Active
+        property color surfaceContainerLowest: root._palette.surfaceContainerLowest
+        property color surfaceContainerLow: root._palette.surfaceContainerLow
+        property color surfaceContainer: root._palette.surfaceContainer
+        property color surfaceContainerHigh: root._palette.surfaceContainerHigh
+        property color surfaceContainerHighest: root._palette.surfaceContainerHighest
+        property color text: root._palette.text
+        property color mutedText: root._palette.mutedText
+        property color subtleText: root._palette.subtleText
+        property color primary: root._palette.primary
+        property color presetPrimary: root._basePalette.primary
+        property color primaryText: root._palette.primaryText
+        property color primaryContainer: root._palette.primaryContainer
+        property color primaryContainerText: root._palette.primaryContainerText
+        property color secondary: root._palette.secondary
+        property color secondaryContainer: root._palette.secondaryContainer
+        property color secondaryContainerText: root._palette.secondaryContainerText
+        property color tertiary: root._palette.tertiary
+        property color tertiaryContainer: root._palette.tertiaryContainer
+        property color tertiaryContainerText: root._palette.tertiaryContainerText
+        property color successColor: root._palette.successColor
+        property color successContainer: root._palette.successContainer
+        property color warningColor: root._palette.warningColor
+        property color warningContainer: root._palette.warningContainer
+        property color errorColor: root._palette.errorColor
+        property color errorContainer: root._palette.errorContainer
+        property color outline: root._palette.outline
+        property color outlineVariant: root._palette.outlineVariant
+        property color surfaceHover: root._isLight ? Qt.rgba(0, 0, 0, 0.08) : Qt.rgba(1, 1, 1, 0.08)
+        property color buttonHover: root._isLight ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(1, 1, 1, 0.10)
+        property color activeTabBg: root._isLight ? Qt.rgba(0, 0, 0, 0.16) : Qt.rgba(1, 1, 1, 0.16)
         property color scrim: "#000000"
         property color shadow: "#000000"
         property color transparent: "transparent"
@@ -73,10 +109,20 @@ QtObject {
         property int xxl: 24
     }
 
+    readonly property real _speedFactor: {
+        if (typeof SettingsData === "undefined")
+            return 1.0;
+        if (SettingsData.motionSpeed === "slower")
+            return 1.5;
+        if (SettingsData.motionSpeed === "faster")
+            return 0.6;
+        return 1.0;
+    }
+
     readonly property QtObject animation: QtObject {
-        property int fast: 120
-        property int normal: 220
-        property int slow: 340
+        property int fast: Math.round(120 * root._speedFactor)
+        property int normal: Math.round(220 * root._speedFactor)
+        property int slow: Math.round(340 * root._speedFactor)
         property int easing: Easing.OutCubic
         property int emphasized: Easing.OutQuint
     }

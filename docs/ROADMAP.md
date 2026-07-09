@@ -32,12 +32,13 @@ Each feature should be implemented harness-first:
 | 4 | Enhanced screenshot tooling | Planned | [04-screenshot-tooling.md](features/04-screenshot-tooling.md) |
 | 5 | Notification center redesign | Planned | [05-notification-center-redesign.md](features/05-notification-center-redesign.md) |
 | 6 | Notification action buttons | Planned | [06-notification-action-buttons.md](features/06-notification-action-buttons.md) |
-| 7 | Wallpaper + Material color pipeline | Backlog | Future detail doc |
+| 7 | Wallpaper + Material color pipeline | Backlog | [08-theme-system.md](features/08-theme-system.md) |
 | 8 | Color picker | Backlog | Future detail doc |
 | 9 | Idle inhibitor | Backlog | Future detail doc |
 | 10 | More complete media overlay | Backlog | Future detail doc |
 | 11 | Workspace / window overview | Backlog | Future detail doc |
-| 12 | Settings UI | Backlog | Future detail doc |
+| 12 | Settings UI | Done | [07-settings-module.md](features/07-settings-module.md) |
+| 13 | Theme system (auto + matugen + export) | Planned | [08-theme-system.md](features/08-theme-system.md) |
 
 ## Recommended order
 
@@ -45,17 +46,10 @@ Each feature should be implemented harness-first:
 2. Build the launcher / command palette because search, ranking, keyboard navigation, and compact overlay behavior become shared foundations for later utilities.
 3. Add clipboard history after the launcher foundation, so clipboard search can reuse the command palette model.
 4. Expand screenshot tooling after the launcher foundation, so OCR/search/save actions can share command palette affordances where useful.
-5. Add wallpaper and Material color once settings/persistence requirements are clearer.
-
-## Backlog notes
-
-### Wallpaper + Material color pipeline
-
-Add a wallpaper selector, random wallpaper action, and Material color generation pipeline. Prefer a small niri-strata-native implementation over copying the full `illogical-impulse` color stack. The first version should only update Quickshell colors and maybe lock screen colors; terminal/editor theming can be deferred.
+5. Build the theme system (auto light/dark + matugen dynamic palette + GTK/Qt export). See [08-theme-system.md](features/08-theme-system.md).
+6. Add wallpaper and Material color once settings/persistence requirements are clearer.
 
 ### Color picker
-
-Add a quick action that picks a color and copies `#RRGGBB` to the clipboard. Use a compositor-neutral backend if available; otherwise make the backend optional and surface an unavailable state.
 
 ### Idle inhibitor
 
@@ -71,7 +65,7 @@ Build a niri-native overview from `niri msg --json windows` and `workspaces`. St
 
 ### Settings UI
 
-Add a small settings surface for user-facing configuration: recording save path, screenshot behavior, theme mode, sidebar width, bar layout, and feature availability. Settings should not be required for basic operation.
+Add a standalone settings window for user-facing configuration: recording save path, screenshot behavior, theme mode, sidebar width, bar layout, niri layout fragment management, and feature availability. Settings should not be required for basic operation. See [07-settings-module.md](features/07-settings-module.md).
 
 ## Documentation index
 
@@ -80,3 +74,4 @@ Add a small settings surface for user-facing configuration: recording save path,
 - [Clipboard harness phases](harness/02-clipboard-history.md)
 - [Launcher harness phases](harness/03-app-launcher-command-palette.md)
 - [Screenshot harness phases](harness/04-screenshot-tooling.md)
+- [Theme system planning](features/08-theme-system.md)

@@ -6,6 +6,7 @@ Item {
     required property var appSearch
     required property var systemActions
     required property var sidebarController
+    required property var settingsController
 
     property bool open: false
     property string inputQuery: ""
@@ -51,6 +52,16 @@ Item {
                 keywords: ["control", "center", "sidebar", "settings", "quick"],
                 actionId: "controlCenter.open",
                 defaultScore: 100,
+            },
+            {
+                id: "command:open-settings",
+                type: "command",
+                title: "Open settings",
+                subtitle: "Configure shell appearance and behavior",
+                icon: "settings",
+                keywords: ["settings", "config", "preferences", "configure"],
+                actionId: "settings.open",
+                defaultScore: 96,
             },
             {
                 id: "command:screenshot",
@@ -496,6 +507,10 @@ Item {
     function runPendingAction() {
         const actionId = pendingActionId;
         pendingActionId = "";
+        if (actionId === "settings.open") {
+            settingsController.openSettings("");
+            return;
+        }
 
         if (actionId === "controlCenter.open") {
             sidebarController.openForOutput("");
