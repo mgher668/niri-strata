@@ -253,3 +253,19 @@ test("theme-render.mjs renders GTK CSS and Qt color scheme", async () => {
   assert.match(render, /NiriStrata/);
   assert.match(render, /niri-strata-colors/);
 });
+
+test("ThemeExport has portal and niri export functions", async () => {
+  const te = await read("modules/services/ThemeExport.qml");
+  assert.match(te, /function exportPortal/);
+  assert.match(te, /gsettings.*color-scheme/);
+  assert.match(te, /function exportNiri/);
+  assert.match(te, /function _renderNiriKdl/);
+  assert.match(te, /colors\.kdl/);
+});
+
+test("theme-render.mjs has portal command and niri renderer", async () => {
+  const render = await read("scripts/theme-render.mjs");
+  assert.match(render, /export function portalCommand/);
+  assert.match(render, /export function portalDconfCommand/);
+  assert.match(render, /export function renderNiri/);
+});
