@@ -166,21 +166,25 @@ ColumnLayout {
             }
 
             Rectangle {
-                width: 120
+                Layout.fillWidth: true
                 height: 28
                 radius: Theme.rounding.xs
                 color: Theme.colors.surfaceContainerHigh
                 border.width: Theme.elevation.outlineWidth
                 border.color: Theme.colors.outlineVariant
+                clip: true
 
                 TextInput {
                     id: textInput
                     anchors.fill: parent
-                    anchors.margins: 4
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    anchors.topMargin: 4
+                    anchors.bottomMargin: 4
                     color: Theme.colors.text
                     font.family: Theme.font.familyMono
                     font.pixelSize: Theme.font.sm
-                    horizontalAlignment: Text.AlignHCenter
+                    horizontalAlignment: Text.AlignLeft
                     verticalAlignment: Text.AlignVCenter
                     activeFocusOnPress: true
                     autoScroll: true
