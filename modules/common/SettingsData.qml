@@ -24,7 +24,7 @@ Item {
     property bool _selfWrite: false
     property bool _hasLoaded: false
 
-    // --- All 45 settings keys as live properties ---
+    // --- All 49 settings keys as live properties ---
     readonly property int settingsConfigVersion: _values.configVersion ?? 1
     readonly property string themeMode: _values.themeMode ?? "dark"
     readonly property string themeId: _values.themeId ?? "default"
@@ -71,6 +71,10 @@ Item {
     readonly property real autoLat: _values.autoLat ?? 0.0
     readonly property real autoLng: _values.autoLng ?? 0.0
     readonly property string wallpaperPath: _values.wallpaperPath ?? ""
+    readonly property bool systemThemeEnabled: _values.systemThemeEnabled ?? false
+    readonly property bool systemThemeGtkEnabled: _values.systemThemeGtkEnabled ?? true
+    readonly property bool systemThemeQtEnabled: _values.systemThemeQtEnabled ?? true
+    readonly property bool systemThemeApplyOnModeChange: _values.systemThemeApplyOnModeChange ?? true
 
     property var _values: ({})
 

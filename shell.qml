@@ -143,6 +143,9 @@ ShellRoot{
             Theme._dynamicPalette = palette;
         }
     }
+    ThemeExport {
+        id: themeExport
+    }
 
     AutoThemeBridge {
         id: autoThemeBridge

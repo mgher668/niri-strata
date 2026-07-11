@@ -210,3 +210,46 @@ test("SettingsSpec includes wallpaperPath key and dynamic in themeId enum", asyn
   assert.match(spec, /"wallpaperPath"/);
   assert.match(spec, /"dynamic"/);
 });
+
+test("ThemeExport.qml has GTK and Qt export functions", async () => {
+  const te = await read("modules/services/ThemeExport.qml");
+  assert.match(te, /function exportAll\(/);
+  assert.match(te, /function exportGtk\(/);
+  assert.match(te, /function exportQt\(/);
+  assert.match(te, /function _renderGtkCss/);
+  assert.match(te, /function _renderQtScheme/);
+  assert.match(te, /NiriStrata/);
+  assert.match(te, /niri-strata-colors\.css/);
+  assert.match(te, /niri-strata-import-start/);
+});
+
+test("shell.qml instantiates ThemeExport", async () => {
+  const shell = await read("shell.qml");
+  assert.match(shell, /ThemeExport\s*\{/);
+});
+
+test("AppearanceTab has system theme section with master toggle and GTK/Qt sub-toggles", async () => {
+  const tab = await read("modules/settings/tabs/AppearanceTab.qml");
+  assert.match(tab, /systemThemeEnabled/);
+  assert.match(tab, /systemThemeGtkEnabled/);
+  assert.match(tab, /systemThemeQtEnabled/);
+  assert.match(tab, /themeExport\.exportAll/);
+  assert.match(tab, /System Theme/);
+});
+
+test("SettingsSpec includes systemTheme keys", async () => {
+  const spec = await read("modules/common/settings/SettingsSpec.js");
+  assert.match(spec, /systemThemeEnabled/);
+  assert.match(spec, /systemThemeGtkEnabled/);
+  assert.match(spec, /systemThemeQtEnabled/);
+  assert.match(spec, /systemThemeApplyOnModeChange/);
+});
+
+test("theme-render.mjs renders GTK CSS and Qt color scheme", async () => {
+  const render = await read("scripts/theme-render.mjs");
+  assert.match(render, /export function renderGtk/);
+  assert.match(render, /export function renderQt/);
+  assert.match(render, /export function insertGtk4Import/);
+  assert.match(render, /NiriStrata/);
+  assert.match(render, /niri-strata-colors/);
+});

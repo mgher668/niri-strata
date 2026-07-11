@@ -50,7 +50,11 @@ var spec = {
     "autoTimeEnd": { "type": "string", "default": "06:00" },
     "autoLat": { "type": "real", "default": 0.0, "min": -90.0, "max": 90.0 },
     "autoLng": { "type": "real", "default": 0.0, "min": -180.0, "max": 180.0 },
-    "wallpaperPath": { "type": "string", "default": "" }
+    "wallpaperPath": { "type": "string", "default": "" },
+    "systemThemeEnabled": { "type": "bool", "default": false },
+    "systemThemeGtkEnabled": { "type": "bool", "default": true },
+    "systemThemeQtEnabled": { "type": "bool", "default": true },
+    "systemThemeApplyOnModeChange": { "type": "bool", "default": true }
 };
 
 var keys = Object.keys(spec);

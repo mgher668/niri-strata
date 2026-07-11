@@ -48,6 +48,10 @@ export const SETTINGS_SPEC = {
   autoLat: { type: "real", default: 0.0, min: -90.0, max: 90.0 },
   autoLng: { type: "real", default: 0.0, min: -180.0, max: 180.0 },
   wallpaperPath: { type: "string", default: "" },
+  systemThemeEnabled: { type: "bool", default: false },
+  systemThemeGtkEnabled: { type: "bool", default: true },
+  systemThemeQtEnabled: { type: "bool", default: true },
+  systemThemeApplyOnModeChange: { type: "bool", default: true },
 };
 
 const SPEC_KEYS = Object.keys(SETTINGS_SPEC);

@@ -318,6 +318,74 @@ ColumnLayout {
         Item { Layout.fillWidth: true }
     }
 
+    // --- System theme ---
+    SettingsSectionHeader {
+        title: "System Theme"
+    }
+
+    SettingsToggleRow {
+        label: "Export to system apps"
+        description: "Apply current Quickshell colors to GTK and Qt applications"
+        checked: root.settingsData.systemThemeEnabled
+        toggleCallback: (val) => root.settingsData.set("systemThemeEnabled", val)
+    }
+
+    ColumnLayout {
+        Layout.fillWidth: true
+        Layout.leftMargin: 16
+        visible: root.settingsData.systemThemeEnabled
+        spacing: 12
+
+        SettingsToggleRow {
+            label: "GTK"
+            checked: root.settingsData.systemThemeGtkEnabled
+            toggleCallback: (val) => root.settingsData.set("systemThemeGtkEnabled", val)
+        }
+
+        SettingsToggleRow {
+            label: "Qt"
+            checked: root.settingsData.systemThemeQtEnabled
+            toggleCallback: (val) => root.settingsData.set("systemThemeQtEnabled", val)
+        }
+
+        SettingsToggleRow {
+            label: "Apply on mode change"
+            description: "Re-export when light/dark mode switches"
+            checked: root.settingsData.systemThemeApplyOnModeChange
+            toggleCallback: (val) => root.settingsData.set("systemThemeApplyOnModeChange", val)
+        }
+
+        RowLayout {
+            spacing: 8
+
+            IconButton {
+                icon: "sync"
+                size: 28
+                iconSize: 16
+                onClicked: {
+                    if (typeof themeExport !== "undefined")
+                        themeExport.exportAll();
+                }
+            }
+
+            StyledText {
+                text: {
+                    if (typeof themeExport === "undefined") return "ThemeExport not available";
+                    if (themeExport.lastStatus === "exporting") return "Exporting...";
+                    if (themeExport.lastStatus === "done") return "Export complete";
+                    if (themeExport.lastStatus === "error") return "Error: " + themeExport.lastError;
+                    return "Click to export now";
+                }
+                font.pixelSize: Theme.font.xs
+                color: {
+                    if (typeof themeExport === "undefined") return Theme.colors.errorColor;
+                    if (themeExport.lastStatus === "error") return Theme.colors.errorColor;
+                    if (themeExport.lastStatus === "done") return Theme.colors.successColor;
+                    return Theme.colors.subtleText;
+                }
+            }
+        }
+    }
     // --- Motion ---
     SettingsSectionHeader {
         title: "Motion"
