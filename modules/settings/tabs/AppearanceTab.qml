@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell.Io
 import QtQuick.Layouts
 import "../../common/"
 import "../widgets/"
@@ -210,10 +211,29 @@ ColumnLayout {
         visible: root.settingsData.themeId === "dynamic"
         spacing: 12
 
-        TextField {
-            label: "Wallpaper"
-            value: root.settingsData.wallpaperPath
-            onCommit: (v) => root.settingsData.set("wallpaperPath", v)
+        RowLayout {
+            spacing: 8
+
+            TextField {
+                label: "Wallpaper"
+                value: root.settingsData.wallpaperPath
+                onCommit: (v) => root.settingsData.set("wallpaperPath", v)
+                Layout.fillWidth: true
+            }
+
+            IconButton {
+                icon: "folder_open"
+                size: 28
+                iconSize: 16
+                onClicked: {
+                    wallpaperPicker.command = [
+                        "zenity", "--file-selection",
+                        "--title=Select wallpaper",
+                        "--file-filter=Images | *.png *.jpg *.jpeg *.webp *.bmp *.gif",
+                    ];
+                    wallpaperPicker.running = true;
+                }
+            }
         }
 
         RowLayout {
@@ -257,6 +277,21 @@ ColumnLayout {
             color: Theme.colors.subtleText
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
+        }
+
+        Process {
+            id: wallpaperPicker
+            command: []
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    var path = text.trim();
+                    if (path.length > 0) {
+                        root.settingsData.set("wallpaperPath", path);
+                        if (typeof themeEngine !== "undefined")
+                            themeEngine.generate(path);
+                    }
+                }
+            }
         }
     }
 

@@ -48,6 +48,7 @@ Item {
             "--json", "hex",
             "--dry-run",
             "-q",
+            "--prefer", "darkness",
         ];
         matugenProcess.running = true;
     }
