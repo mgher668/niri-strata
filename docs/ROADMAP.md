@@ -38,7 +38,7 @@ Each feature should be implemented harness-first:
 | 10 | More complete media overlay | Backlog | Future detail doc |
 | 11 | Workspace / window overview | Backlog | Future detail doc |
 | 12 | Settings UI | Done | [07-settings-module.md](features/07-settings-module.md) |
-| 13 | Theme system (auto + matugen + export) | Planned | [08-theme-system.md](features/08-theme-system.md) |
+| 13 | Theme system (auto + matugen + export) | Core done | [08-theme-system.md](features/08-theme-system.md) |
 
 ## Recommended order
 

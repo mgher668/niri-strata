@@ -341,15 +341,15 @@ Responsibilities:
 
 ### Acceptance criteria
 
-- [ ] matugen availability is visible in service/settings status
-- [ ] dynamic palette generation from wallpaper updates shell colors
-- [ ] dynamic palette generation from hex updates shell colors
-- [ ] invalid JSON does not blank `Theme.colors`
-- [ ] missing matugen falls back to a built-in preset
-- [ ] repeated setting changes coalesce into one generation
-- [ ] stale generation results cannot overwrite newer requests
-- [ ] parser and mapper are covered by harness fixtures
-- [ ] `npm run harness` passes
+- [x] matugen availability is visible in service/settings status
+- [x] dynamic palette generation from wallpaper updates shell colors
+- [x] dynamic palette generation from hex updates shell colors
+- [x] invalid JSON does not blank `Theme.colors`
+- [x] missing matugen falls back to a built-in preset
+- [x] repeated setting changes coalesce into one generation
+- [x] stale generation results cannot overwrite newer requests
+- [x] parser and mapper are covered by harness fixtures
+- [x] `npm run harness` passes
 
 ## Phase C: system theme export
 
@@ -483,15 +483,15 @@ The master switch only unlocks the section. Each target requires its own toggle.
 
 ### Acceptance criteria
 
-- [ ] GTK CSS renders from a palette JSON fixture
-- [ ] Qt color scheme renders from a palette JSON fixture
-- [ ] generated names use `niri-strata` / `NiriStrata`
-- [ ] GTK apply is idempotent
-- [ ] GTK apply does not silently destroy user `gtk.css`
-- [ ] Qt apply updates qt5ct and qt6ct independently
-- [ ] missing optional tools produce target-level disabled/error state
-- [ ] export does not block live shell recoloring
-- [ ] `npm run harness` passes
+- [x] GTK CSS renders from a palette JSON fixture
+- [x] Qt color scheme renders from a palette JSON fixture
+- [x] generated names use `niri-strata` / `NiriStrata`
+- [x] GTK apply is idempotent
+- [x] GTK apply does not silently destroy user `gtk.css`
+- [x] Qt apply updates qt5ct and qt6ct independently
+- [x] missing optional tools produce target-level disabled/error state
+- [x] export does not block live shell recoloring
+- [x] `npm run harness` passes
 
 ## Phase D: broader external targets
 
