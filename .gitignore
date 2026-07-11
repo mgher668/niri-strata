@@ -19,3 +19,5 @@ bar-*.png
 sidebar-*.png
 *-scratch.png
 settings.json
+auto-theme-state.json
+target/

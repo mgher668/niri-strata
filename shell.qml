@@ -136,6 +136,33 @@ ShellRoot{
     SettingsController {
         id: settingsController
     }
+    ThemeEngine {
+        id: themeEngine
+
+        onPaletteReady: function(palette) {
+            Theme._dynamicPalette = palette;
+        }
+    }
+
+    AutoThemeBridge {
+        id: autoThemeBridge
+    }
+
+    Timer {
+        id: autoThemeLauncher
+        interval: 2000
+        repeat: false
+        running: true
+        onTriggered: {
+            var xdg = Quickshell.env("XDG_CONFIG_HOME");
+            var home = Quickshell.env("HOME");
+            var base = (xdg && xdg.length > 0) ? xdg : (home + "/.config");
+            var dir = base + "/quickshell/niri-strata";
+            Quickshell.execDetached(["sh", "-c", "mkdir -p " + dir + " && touch " + dir + "/auto-theme-state.json"]);
+            var bin = home + "/.config/quickshell/niri-strata/target/release/niri-strata-auto-theme";
+            Quickshell.execDetached([bin]);
+        }
+    }
 
     IpcHandler {
         target: "controlCenter"

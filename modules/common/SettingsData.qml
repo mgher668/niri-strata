@@ -24,7 +24,7 @@ Item {
     property bool _selfWrite: false
     property bool _hasLoaded: false
 
-    // --- All 39 settings keys as live properties ---
+    // --- All 45 settings keys as live properties ---
     readonly property int settingsConfigVersion: _values.configVersion ?? 1
     readonly property string themeMode: _values.themeMode ?? "dark"
     readonly property string themeId: _values.themeId ?? "default"
@@ -65,6 +65,12 @@ Item {
     readonly property int niriWindowCornerRadius: _values.niriWindowCornerRadius ?? 0
     readonly property bool niriPreferNoCsd: _values.niriPreferNoCsd ?? true
     readonly property string motionSpeed: _values.motionSpeed ?? "normal"
+    readonly property string autoMode: _values.autoMode ?? "time"
+    readonly property string autoTimeStart: _values.autoTimeStart ?? "18:00"
+    readonly property string autoTimeEnd: _values.autoTimeEnd ?? "06:00"
+    readonly property real autoLat: _values.autoLat ?? 0.0
+    readonly property real autoLng: _values.autoLng ?? 0.0
+    readonly property string wallpaperPath: _values.wallpaperPath ?? ""
 
     property var _values: ({})
 

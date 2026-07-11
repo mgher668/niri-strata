@@ -8,7 +8,7 @@
 var spec = {
     "configVersion": { "type": "int", "default": 1, "min": 1 },
     "themeMode": { "type": "string", "default": "dark", "enum": ["dark", "light", "auto"] },
-    "themeId": { "type": "string", "default": "default", "enum": ["default", "blue", "green", "rose", "amber", "neutral"] },
+    "themeId": { "type": "string", "default": "default", "enum": ["default", "blue", "green", "rose", "amber", "neutral", "dynamic"] },
     "accentColor": { "type": "string", "default": "", "regex": "^#[0-9a-fA-F]{6}$" },
     "barPosition": { "type": "string", "default": "top", "enum": ["top", "bottom"] },
     "barStyle": { "type": "string", "default": "flush", "enum": ["flush", "floating"] },
@@ -44,7 +44,13 @@ var spec = {
     "niriFocusRingEnabled": { "type": "bool", "default": true },
     "niriFocusRingWidth": { "type": "int", "default": 4, "min": 0, "max": 20 },
     "niriWindowCornerRadius": { "type": "int", "default": 0, "min": 0, "max": 30 },
-    "niriPreferNoCsd": { "type": "bool", "default": true }
+    "niriPreferNoCsd": { "type": "bool", "default": true },
+    "autoMode": { "type": "string", "default": "time", "enum": ["time", "sun"] },
+    "autoTimeStart": { "type": "string", "default": "18:00" },
+    "autoTimeEnd": { "type": "string", "default": "06:00" },
+    "autoLat": { "type": "real", "default": 0.0, "min": -90.0, "max": 90.0 },
+    "autoLng": { "type": "real", "default": 0.0, "min": -180.0, "max": 180.0 },
+    "wallpaperPath": { "type": "string", "default": "" }
 };
 
 var keys = Object.keys(spec);

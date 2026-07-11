@@ -53,8 +53,14 @@ const EXPECTED_DEFAULTS = {
   niriWindowCornerRadius: 0,
   niriPreferNoCsd: true,
   motionSpeed: "normal",
+  autoMode: "time",
+  autoTimeStart: "18:00",
+  autoTimeEnd: "06:00",
+  autoLat: 0.0,
+  autoLng: 0.0,
+  wallpaperPath: "",
 };
-test("defaultSettings returns all 39 spec keys with their defaults", () => {
+test("defaultSettings returns all 45 spec keys with their defaults", () => {
   assert.deepEqual(defaultSettings(), EXPECTED_DEFAULTS);
 });
 
@@ -87,7 +93,7 @@ test("mergeSettings keeps known keys and drops unknown keys", () => {
 
 test("migrateSettings fills missing keys with defaults from a v0 fragment", () => {
   const migrated = migrateSettings({ configVersion: 0, themeMode: "light" }, 0);
-  assert.equal(Object.keys(migrated).length, 39);
+  assert.equal(Object.keys(migrated).length, 45);
   assert.equal(migrated.themeMode, "light");
   assert.equal(migrated.barHeight, 34);
 });

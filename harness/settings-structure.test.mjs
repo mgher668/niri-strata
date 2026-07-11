@@ -84,6 +84,18 @@ test("Theme.qml resolves palette from SettingsData themeId/themeMode/accentColor
   assert.match(theme, /presetPrimary:\s*root\._basePalette\.primary/);
 });
 
+test("auto theme bridge is mounted and writes daemon state into Theme", async () => {
+  const shell = await read("shell.qml");
+  const bridge = await read("modules/services/AutoThemeBridge.qml");
+  assert.match(shell, /AutoThemeBridge\s*\{\s*id:\s*autoThemeBridge/s);
+  assert.match(bridge, /import\s+"\.\.\/common\/"/);
+  assert.match(bridge, /blockLoading:\s*true/);
+  assert.match(bridge, /watchChanges:\s*true/);
+  assert.match(bridge, /stateFile\.reload\(\)/);
+  assert.match(bridge, /auto-theme-state\.json/);
+  assert.match(bridge, /Theme\._autoLight\s*=/);
+});
+
 test("Bar.qml binds canvas shape and flatten policy to SettingsData", async () => {
   const bar = await read("modules/bar/Bar.qml");
   assert.match(bar, /SettingsData\.barFlattenOnMaximized/);
@@ -161,4 +173,40 @@ test("AboutTab is registered in controller and wired in SettingsContent", async 
   assert.match(content, /AboutTab\s*\{/);
   assert.match(about, /niri-strata/);
   assert.match(about, /xdg-open/);
+});
+
+test("ThemeEngine.qml has matugen process and palette mapping", async () => {
+  const te = await read("modules/services/ThemeEngine.qml");
+  assert.match(te, /property bool matugenAvailable/);
+  assert.match(te, /function generate\(/);
+  assert.match(te, /function generateFromHex\(/);
+  assert.match(te, /signal paletteReady/);
+  assert.match(te, /function _mapToPalette/);
+  assert.match(te, /surface_container_low.*surfaceContainerLow/);
+  assert.match(te, /matugen.*--json.*hex/);
+});
+
+test("Theme.qml supports dynamic palette via _dynamicPalette", async () => {
+  const theme = await read("modules/common/Theme.qml");
+  assert.match(theme, /property var _dynamicPalette/);
+  assert.match(theme, /themeId === "dynamic" \&\& _dynamicPalette/);
+});
+
+test("shell.qml instantiates ThemeEngine and wires paletteReady to Theme._dynamicPalette", async () => {
+  const shell = await read("shell.qml");
+  assert.match(shell, /ThemeEngine\s*\{[\s\S]*onPaletteReady/);
+  assert.match(shell, /Theme\._dynamicPalette = palette/);
+});
+
+test("AppearanceTab includes Dynamic preset option and wallpaper field", async () => {
+  const tab = await read("modules/settings/tabs/AppearanceTab.qml");
+  assert.match(tab, /\{ label: "Dynamic", value: "dynamic" \}/);
+  assert.match(tab, /wallpaperPath/);
+  assert.match(tab, /themeEngine\.generate/);
+});
+
+test("SettingsSpec includes wallpaperPath key and dynamic in themeId enum", async () => {
+  const spec = await read("modules/common/settings/SettingsSpec.js");
+  assert.match(spec, /"wallpaperPath"/);
+  assert.match(spec, /"dynamic"/);
 });

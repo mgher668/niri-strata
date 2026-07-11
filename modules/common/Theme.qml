@@ -7,15 +7,20 @@ QtObject {
     id: root
 
     // --- Theme resolution ---
-    // Reads themeId and themeMode from SettingsData, resolves to a color palette.
-    // Falls back to "default" / "dark" when SettingsData is unavailable.
+    // themeMode: user choice (dark/light/auto), NEVER changed by daemon.
+    // _autoLight: runtime value from daemon, NOT persisted. Only used when themeMode == "auto".
+    property bool _autoLight: {
+        // Warm start: guess from local hour before daemon kicks in
+        var h = new Date().getHours();
+        return h >= 6 && h < 18;
+    }
 
     readonly property bool _isLight: {
         if (typeof SettingsData === "undefined")
             return false;
         var mode = SettingsData.themeMode;
         if (mode === "auto")
-            return Qt.styleHints.colorScheme === Qt.Light;
+            return root._autoLight;
         return mode === "light";
     }
 
@@ -31,7 +36,19 @@ QtObject {
         return SettingsData.accentColor || "";
     }
 
-    readonly property var _basePalette: Presets.getPreset(_themeId, _isLight)
+    // Dynamic palette from matugen (set by ThemeEngine), or preset palette.
+    // When themeId === "dynamic" and _dynamicPalette has content, use it;
+    // otherwise fall back to "default" preset.
+    readonly property var _basePalette: {
+        if (_themeId === "dynamic" && _dynamicPalette) {
+            return _isLight ? _dynamicPalette.light : _dynamicPalette.dark;
+        }
+        return Presets.getPreset(_themeId, _isLight);
+    }
+
+    // Set by ThemeEngine.paletteReady signal (via shell.qml wiring).
+    // Null when no dynamic palette has been generated yet.
+    property var _dynamicPalette: null
 
     readonly property var _palette: Presets.applyAccent(_basePalette, _accentColor)
 

@@ -45,3 +45,4 @@ Most features should follow this order:
 - [Clipboard history](02-clipboard-history.md)
 - [App launcher / command palette](03-app-launcher-command-palette.md)
 - [Enhanced screenshot tooling](04-screenshot-tooling.md)
+- [Theme system integration](05-theme-system-integration.md)
