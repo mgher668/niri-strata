@@ -24,7 +24,7 @@ Item {
     property bool _selfWrite: false
     property bool _hasLoaded: false
 
-    // --- All 49 settings keys as live properties ---
+    // --- All 58 settings keys as live properties ---
     readonly property int settingsConfigVersion: _values.configVersion ?? 1
     readonly property string themeMode: _values.themeMode ?? "dark"
     readonly property string themeId: _values.themeId ?? "default"
@@ -76,6 +76,15 @@ Item {
     readonly property bool systemThemeQtEnabled: _values.systemThemeQtEnabled ?? true
     readonly property bool systemThemeApplyOnModeChange: _values.systemThemeApplyOnModeChange ?? true
 
+    readonly property string wallpaperDirs: _values.wallpaperDirs ?? "[]"
+    readonly property string wallpaperBackend: _values.wallpaperBackend ?? "swww"
+    readonly property string wallpaperFillMode: _values.wallpaperFillMode ?? "fill"
+    readonly property string wallpaperBgColor: _values.wallpaperBgColor ?? "#000000"
+    readonly property bool wallpaperPerMonitor: _values.wallpaperPerMonitor ?? false
+    readonly property string wallpaperMonitorPaths: _values.wallpaperMonitorPaths ?? "{}"
+    readonly property string wallpaperSortBy: _values.wallpaperSortBy ?? "name"
+    readonly property string wallpaperSortOrder: _values.wallpaperSortOrder ?? "ascending"
+    readonly property bool wallpaperRecursive: _values.wallpaperRecursive ?? false
     property var _values: ({})
 
     // --- Core API ---

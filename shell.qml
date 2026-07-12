@@ -146,6 +146,9 @@ ShellRoot{
     ThemeExport {
         id: themeExport
     }
+    WallpaperService {
+        id: wallpaperService
+    }
 
     AutoThemeBridge {
         id: autoThemeBridge

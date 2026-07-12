@@ -52,6 +52,15 @@ export const SETTINGS_SPEC = {
   systemThemeGtkEnabled: { type: "bool", default: true },
   systemThemeQtEnabled: { type: "bool", default: true },
   systemThemeApplyOnModeChange: { type: "bool", default: true },
+  wallpaperDirs: { type: "string", default: "[]" },
+  wallpaperBackend: { type: "string", default: "swww", enum: ["swww", "swaybg"] },
+  wallpaperFillMode: { type: "string", default: "fill", enum: ["fill", "fit", "center", "tile", "stretch"] },
+  wallpaperBgColor: { type: "string", default: "#000000" },
+  wallpaperPerMonitor: { type: "bool", default: false },
+  wallpaperMonitorPaths: { type: "string", default: "{}" },
+  wallpaperSortBy: { type: "string", default: "name", enum: ["name", "date"] },
+  wallpaperSortOrder: { type: "string", default: "ascending", enum: ["ascending", "descending"] },
+  wallpaperRecursive: { type: "bool", default: false },
 };
 
 const SPEC_KEYS = Object.keys(SETTINGS_SPEC);

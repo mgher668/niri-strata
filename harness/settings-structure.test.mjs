@@ -269,3 +269,55 @@ test("theme-render.mjs has portal command and niri renderer", async () => {
   assert.match(render, /export function portalDconfCommand/);
   assert.match(render, /export function renderNiri/);
 });
+
+test("WallpaperService.qml has backend probe, scan, and apply functions", async () => {
+  const ws = await read("modules/services/WallpaperService.qml");
+  assert.match(ws, /property bool swwwAvailable/);
+  assert.match(ws, /property bool swaybgAvailable/);
+  assert.match(ws, /function probeBackends/);
+  assert.match(ws, /function probeConflicts/);
+  assert.match(ws, /function scanFolders/);
+  assert.match(ws, /function applyWallpaper/);
+  assert.match(ws, /swww.*img/);
+  assert.match(ws, /swaybg.*-i/);
+});
+
+test("WallpaperGrid.qml has GridView with async Image delegates", async () => {
+  const wg = await read("modules/settings/widgets/WallpaperGrid.qml");
+  assert.match(wg, /GridView/);
+  assert.match(wg, /Image\.PreserveAspectCrop/);
+  assert.match(wg, /asynchronous: true/);
+  assert.match(wg, /cache: true/);
+  assert.match(wg, /sourceSize/);
+  assert.match(wg, /cacheBuffer/);
+  assert.match(wg, /imageClicked/);
+});
+
+test("AppearanceTab has wallpaper backend, fill mode, and folders UI", async () => {
+  const tab = await read("modules/settings/tabs/AppearanceTab.qml");
+  assert.match(tab, /wallpaperBackend/);
+  assert.match(tab, /wallpaperFillMode/);
+  assert.match(tab, /wallpaperBgColor/);
+  assert.match(tab, /wallpaperPerMonitor/);
+  assert.match(tab, /wallpaperDirs/);
+  assert.match(tab, /WallpaperGrid/);
+  assert.match(tab, /folderPicker/);
+});
+
+test("shell.qml instantiates WallpaperService", async () => {
+  const shell = await read("shell.qml");
+  assert.match(shell, /WallpaperService\s*\{/);
+});
+
+test("SettingsSpec has all 9 new wallpaper keys", async () => {
+  const spec = await read("modules/common/settings/SettingsSpec.js");
+  assert.match(spec, /wallpaperDirs/);
+  assert.match(spec, /wallpaperBackend/);
+  assert.match(spec, /wallpaperFillMode/);
+  assert.match(spec, /wallpaperBgColor/);
+  assert.match(spec, /wallpaperPerMonitor/);
+  assert.match(spec, /wallpaperMonitorPaths/);
+  assert.match(spec, /wallpaperSortBy/);
+  assert.match(spec, /wallpaperSortOrder/);
+  assert.match(spec, /wallpaperRecursive/);
+});

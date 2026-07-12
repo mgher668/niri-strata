@@ -63,8 +63,17 @@ const EXPECTED_DEFAULTS = {
   systemThemeGtkEnabled: true,
   systemThemeQtEnabled: true,
   systemThemeApplyOnModeChange: true,
+  wallpaperDirs: "[]",
+  wallpaperBackend: "swww",
+  wallpaperFillMode: "fill",
+  wallpaperBgColor: "#000000",
+  wallpaperPerMonitor: false,
+  wallpaperMonitorPaths: "{}",
+  wallpaperSortBy: "name",
+  wallpaperSortOrder: "ascending",
+  wallpaperRecursive: false,
 };
-test("defaultSettings returns all 49 spec keys with their defaults", () => {
+test("defaultSettings returns all 58 spec keys with their defaults", () => {
   assert.deepEqual(defaultSettings(), EXPECTED_DEFAULTS);
 });
 
@@ -97,7 +106,7 @@ test("mergeSettings keeps known keys and drops unknown keys", () => {
 
 test("migrateSettings fills missing keys with defaults from a v0 fragment", () => {
   const migrated = migrateSettings({ configVersion: 0, themeMode: "light" }, 0);
-  assert.equal(Object.keys(migrated).length, 49);
+  assert.equal(Object.keys(migrated).length, 58);
   assert.equal(migrated.themeMode, "light");
   assert.equal(migrated.barHeight, 34);
 });

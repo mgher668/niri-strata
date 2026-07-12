@@ -298,6 +298,233 @@ ColumnLayout {
             }
         }
     }
+    // ── Wallpaper manager ──
+    SettingsSectionHeader {
+        title: "Wallpaper"
+    }
+
+    // Backend selection
+    SettingsSegmentedRow {
+        label: "Backend"
+        value: root.settingsData.wallpaperBackend
+        options: {
+            var opts = [];
+            if (typeof wallpaperService !== "undefined" && wallpaperService.swwwAvailable)
+                opts.push({ label: "swww", value: "swww" });
+            if (typeof wallpaperService !== "undefined" && wallpaperService.swaybgAvailable)
+                opts.push({ label: "swaybg", value: "swaybg" });
+            if (opts.length === 0)
+                opts.push({ label: "None", value: "none" });
+            return opts;
+        }
+        selectedCallback: (val) => root.settingsData.set("wallpaperBackend", val)
+    }
+
+    // Fill mode
+    SettingsSegmentedRow {
+        label: "Fill mode"
+        value: root.settingsData.wallpaperFillMode
+        options: {
+            var modes = ["fill", "fit", "center", "tile", "stretch"];
+            if (root.settingsData.wallpaperBackend === "swww")
+                modes = ["fill"];
+            return modes.map(m => ({ label: m.charAt(0).toUpperCase() + m.slice(1), value: m }));
+        }
+        selectedCallback: (val) => root.settingsData.set("wallpaperFillMode", val)
+    }
+
+    // Background color swatches
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: 8
+
+        StyledText {
+            text: "BG color"
+            font.pixelSize: Theme.font.sm
+            color: Theme.colors.mutedText
+            Layout.preferredWidth: 120
+        }
+
+        Repeater {
+            model: ["#000000", "#1a1a2e", "#2d2d44", "#0f3460", "#16213e", "#ffffff"]
+
+            Rectangle {
+                required property var modelData
+                width: 24
+                height: 24
+                radius: 12
+                color: modelData
+                border.width: root.settingsData.wallpaperBgColor === modelData ? 3 : 0
+                border.color: Theme.colors.text
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.settingsData.set("wallpaperBgColor", modelData)
+                }
+            }
+        }
+
+        Item { Layout.fillWidth: true }
+    }
+
+    // Per-monitor toggle
+    SettingsToggleRow {
+        label: "Per-monitor"
+        description: "Set independent wallpaper for each display"
+        checked: root.settingsData.wallpaperPerMonitor
+        toggleCallback: (val) => root.settingsData.set("wallpaperPerMonitor", val)
+    }
+
+    // Monitor selector (when per-monitor is on)
+    SettingsSegmentedRow {
+        visible: root.settingsData.wallpaperPerMonitor
+        label: "Monitor"
+        value: ""
+        options: {
+            if (typeof Quickshell === "undefined") return [];
+            return Quickshell.screens.map(s => ({ label: s.name, value: s.name }));
+        }
+        selectedCallback: (val) => { root._selectedMonitor = val; }
+    }
+
+    property string _selectedMonitor: ""
+
+    // Wallpaper folders list
+    SettingsSectionHeader {
+        title: "Folders"
+    }
+
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 4
+
+        Repeater {
+            model: {
+                try { return JSON.parse(root.settingsData.wallpaperDirs); }
+                catch(e) { return []; }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                StyledText {
+                    text: modelData
+                    font.pixelSize: Theme.font.xs
+                    color: Theme.colors.subtleText
+                    Layout.fillWidth: true
+                    elide: Text.ElideLeft
+                }
+
+                IconButton {
+                    icon: "close"
+                    size: 24
+                    iconSize: 14
+                    onClicked: {
+                        var dirs = [];
+                        try { dirs = JSON.parse(root.settingsData.wallpaperDirs); } catch(e) {}
+                        dirs.splice(index, 1);
+                        root.settingsData.set("wallpaperDirs", JSON.stringify(dirs));
+                        root._rescanWallpapers();
+                    }
+                }
+            }
+        }
+
+        RowLayout {
+            spacing: 8
+
+            IconButton {
+                icon: "folder_open"
+                size: 28
+                iconSize: 16
+                onClicked: {
+                    folderPicker.command = [
+                        "zenity", "--file-selection", "--directory",
+                        "--title=Select wallpaper folder",
+                    ];
+                    folderPicker.running = true;
+                }
+            }
+
+            StyledText {
+                text: "Add folder"
+                font.pixelSize: Theme.font.sm
+                color: Theme.colors.subtleText
+            }
+        }
+
+        Process {
+            id: folderPicker
+            command: []
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    var dir = text.trim();
+                    if (dir.length > 0) {
+                        var dirs = [];
+                        try { dirs = JSON.parse(root.settingsData.wallpaperDirs); } catch(e) {}
+                        if (dirs.indexOf(dir) < 0) {
+                            dirs.push(dir);
+                            root.settingsData.set("wallpaperDirs", JSON.stringify(dirs));
+                            root._rescanWallpapers();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Wallpaper grid
+    WallpaperGrid {
+        id: wallpaperGrid
+        Layout.fillWidth: true
+        Layout.preferredHeight: 300
+        sortBy: root.settingsData.wallpaperSortBy
+        sortOrder: root.settingsData.wallpaperSortOrder
+        recursive: root.settingsData.wallpaperRecursive
+        selectedPath: root.settingsData.wallpaperPath
+
+        onRescan: root._rescanWallpapers()
+        onImageClicked: function(path) {
+            root.settingsData.set("wallpaperPath", path);
+            var output = root.settingsData.wallpaperPerMonitor ? root._selectedMonitor : "";
+            if (typeof wallpaperService !== "undefined")
+                wallpaperService.applyWallpaper(path, output);
+            if (typeof themeEngine !== "undefined")
+                themeEngine.generate(path);
+        }
+    }
+
+    // Conflict warning
+    StyledText {
+        visible: typeof wallpaperService !== "undefined" && wallpaperService.detectedConflicts.length > 0
+        text: "⚠ Detected running: " + (wallpaperService ? wallpaperService.detectedConflicts.join(", ") : "") + ". Stop them before applying."
+        font.pixelSize: Theme.font.xs
+        color: Theme.colors.warningColor
+        wrapMode: Text.WordWrap
+        Layout.fillWidth: true
+    }
+
+    function _rescanWallpapers() {
+        if (typeof wallpaperService === "undefined") return;
+        var dirs = [];
+        try { dirs = JSON.parse(root.settingsData.wallpaperDirs); } catch(e) {}
+        wallpaperService.scanFolders(
+            dirs,
+            root.settingsData.wallpaperRecursive,
+            root.settingsData.wallpaperSortBy,
+            root.settingsData.wallpaperSortOrder
+        );
+    }
+
+    Connections {
+        target: typeof wallpaperService !== "undefined" ? wallpaperService : null
+        function onImagesReady(paths) {
+            // Update the grid's imageList
+            wallpaperGrid.imageList = paths;
+        }
+    }
 
     // Accent color swatches
     RowLayout {
