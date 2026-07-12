@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
 import "../../common/"
+import "../widgets/"
 
 // WallpaperGrid — thumbnail grid for browsing wallpaper images.
 // Uses GridView with virtualization for performance (only visible delegates decoded).
@@ -32,18 +33,24 @@ Item {
                 color: Theme.colors.mutedText
             }
 
-            ComboBox {
-                id: sortByBox
-                model: ["Name", "Date"]
-                onCurrentTextChanged: sortBy = currentText.toLowerCase()
-                Layout.preferredWidth: 80
+            SettingsSegmentedRow {
+                label: ""
+                value: root.sortBy === "date" ? "Date" : "Name"
+                options: [
+                    { label: "Name", value: "name" },
+                    { label: "Date", value: "date" }
+                ]
+                selectedCallback: (val) => { root.sortBy = val; root.rescan(); }
             }
 
-            ComboBox {
-                id: sortOrderBox
-                model: ["Ascending", "Descending"]
-                onCurrentTextChanged: sortOrder = currentText.toLowerCase()
-                Layout.preferredWidth: 100
+            SettingsSegmentedRow {
+                label: ""
+                value: root.sortOrder === "descending" ? "Descending" : "Ascending"
+                options: [
+                    { label: "Asc", value: "ascending" },
+                    { label: "Desc", value: "descending" }
+                ]
+                selectedCallback: (val) => { root.sortOrder = val; root.rescan(); }
             }
 
             Item { Layout.fillWidth: true }
@@ -65,15 +72,20 @@ Item {
 
         // ── Grid ──
 
-        ScrollView {
+        Flickable {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            clip: true
+            contentWidth: width
+            contentHeight: grid.contentHeight
+            boundsBehavior: Flickable.StopAtBounds
 
             GridView {
                 id: grid
+                anchors.fill: parent
                 model: root.imageList
-                cellWidth: 180 + 8
-                cellHeight: 120 + 8
+                cellWidth: 188
+                cellHeight: 128
                 clip: true
                 cacheBuffer: 2000
 
@@ -95,12 +107,6 @@ Item {
                         cache: true
                         sourceSize.width: 180
                         sourceSize.height: 120
-
-                        Rectangle {
-                            anchors.fill: parent
-                            color: "transparent"
-                            border.width: 0
-                        }
                     }
 
                     MouseArea {
@@ -113,7 +119,6 @@ Item {
                     }
                 }
 
-                // Empty states
                 Text {
                     anchors.centerIn: parent
                     visible: root.imageList.length === 0
