@@ -39,7 +39,7 @@ Each feature should be implemented harness-first:
 | 11 | Workspace / window overview | Backlog | Future detail doc |
 | 12 | Settings UI | Done | [07-settings-module.md](features/07-settings-module.md) |
 | 13 | Theme system (auto + matugen + export) | Core done | [08-theme-system.md](features/08-theme-system.md) |
-
+| 14 | Wallpaper manager | Planned | [09-wallpaper-manager.md](features/09-wallpaper-manager.md) |
 ## Recommended order
 
 1. Finish recording enhancements manual smoke because the implementation is already in place.
@@ -75,3 +75,4 @@ Add a standalone settings window for user-facing configuration: recording save p
 - [Launcher harness phases](harness/03-app-launcher-command-palette.md)
 - [Screenshot harness phases](harness/04-screenshot-tooling.md)
 - [Theme system planning](features/08-theme-system.md)
+- [Wallpaper manager](features/09-wallpaper-manager.md)
