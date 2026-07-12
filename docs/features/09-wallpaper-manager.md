@@ -235,15 +235,106 @@ from niri-strata to avoid conflicts.
 
 Do NOT auto-kill. Only warn.
 
-## Architecture
+## Harness test plan
 
-### New files
+Pure functions are tested without launching Quickshell.
+
+### `harness/lib/wallpaper-commands.mjs`
+
+Backend command construction — no side effects, pure argv builders.
+
+```js
+buildSwwwCommand(path, output, fillColor)
+  → ["swww", "img", path, "--transition-type", "fade", ...]
+  → omit "-o" when output is empty
+  → omit "--fill-color" when fillColor is empty
+
+buildSwaybgCommand(path, output, fillMode, bgColor)
+  → ["swaybg", "-i", path, "-m", fillMode, "-c", bgColor, ...]
+  → omit "-o" when output is empty
+  → omit "-c" when bgColor is empty
+
+buildSwwwDaemonStart()
+  → ["swww-daemon"]
+
+buildSwaybgKill()
+  → ["pkill", "-x", "swaybg"]
+
+validFillModesForBackend(backend)
+  → swww: ["fill"]
+  → swaybg: ["fill", "fit", "center", "tile", "stretch"]
+  → unknown: []
+
+parseConflictProbe(rawText)
+  → "" → []
+  → "swaybg\n" → ["swaybg"]
+  → "swww-daemon\nhyprpaper\n" → ["swww-daemon", "hyprpaper"]
+```
+
+### `harness/lib/wallpaper-scan.mjs`
+
+Folder scanning and sorting — pure parse/sort functions.
+
+```js
+parseFileList(rawText, sortBy, sortOrder)
+  → raw text from ls/find → sorted array of paths
+  → name sort: localeCompare
+  → date sort: parse "timestamp path" lines from find -printf
+  → ascending/descending: reverse
+  → empty input → []
+
+buildScanCommand(dirs, recursive, sortBy)
+  → recursive=false, sortBy=name: ["ls", "-1", dir + "/*.jpg", ...]
+  → recursive=true, sortBy=date: ["find", dir, "-type", "f", "(", ...,
+     "-printf", "%T@ %p\\n"]
+  → multiple dirs: one command per dir, results merged
+```
+
+### `harness/wallpaper-commands.test.mjs`
+
+| test | validates |
+|---|---|
+| swww command has correct argv | path, transition-type, no -o when output empty |
+| swww command includes -o when output specified | per-monitor apply |
+| swww command includes --fill-color when provided | bg color support |
+| swaybg command has correct argv | -i, -m, -c, -o |
+| swaybg command omits -o when output empty | all-outputs apply |
+| swaybg command omits -c when bgColor empty | default black |
+| validFillModesForBackend swww returns only fill | swww limitation |
+| validFillModesForBackend swaybg returns all 5 | full support |
+| validFillModesForBackend unknown returns empty | graceful fallback |
+| parseConflictProbe empty returns empty array | no conflicts |
+| parseConflictProbe detects swww-daemon | single conflict |
+| parseConflictProbe detects multiple | multi conflict |
+| parseFileList name ascending | alphabetical order |
+| parseFileList name descending | reverse alphabetical |
+| parseFileList date ascending | oldest first |
+| parseFileList date descending | newest first |
+| parseFileList empty input returns empty | no crash on empty |
+| buildScanCommand non-recursive uses ls | correct command shape |
+| buildScanCommand recursive uses find | find with -type f |
+| buildScanCommand date sort uses -printf | timestamp prefix |
+
+### `harness/settings-structure.test.mjs` (additions)
+
+| test | validates |
+|---|---|
+| SettingsSpec has all 9 new wallpaper keys | spec completeness |
+| SettingsData has wallpaper properties | QML wiring |
+| WallpaperService has scanFolders and applyWallpaper | service API |
+| WallpaperGrid has GridView with Image delegates | thumbnail rendering |
+| AppearanceTab has backend segmented row | UI wiring |
+| AppearanceTab has wallpaper folders list | folder management |
+
+## Architecture
 
 | file | purpose |
 |---|---|
 | `modules/services/WallpaperService.qml` | Backend detection, folder scanning, apply commands, conflict probe |
 | `modules/settings/widgets/WallpaperGrid.qml` | GridView with thumbnails, sort controls, refresh button |
-
+| `harness/lib/wallpaper-commands.mjs` | Pure command builders + fill mode validator + conflict parser |
+| `harness/lib/wallpaper-scan.mjs` | Pure scan command builder + file list parser/sorter |
+| `harness/wallpaper-commands.test.mjs` | 20 test cases for command construction, fill modes, conflicts, scanning |
 ### Modified files
 
 | file | changes |
@@ -296,14 +387,18 @@ function probeConflicts()
 - [ ] 600+ images don't lag the thumbnail grid
 - [ ] Empty folder shows "No images found" state
 - [ ] No wallpaper folders shows "Add a folder" state
+- [ ] harness: command builders produce correct argv for swww and swaybg
+- [ ] harness: fill mode validator returns correct modes per backend
+- [ ] harness: conflict parser correctly detects running daemons
+- [ ] harness: file list parser sorts by name and date, ascending and descending
+- [ ] harness: scan command builder uses ls for non-recursive, find for recursive
 - [ ] `npm run harness` passes
-- [ ] qmllint zero warnings on new files
-
-## Rollout order
 
 1. SettingsSpec + SettingsData: add 9 wallpaper keys + harness sync
-2. WallpaperService.qml: backend probe, conflict probe, folder scan, apply
-3. WallpaperGrid.qml: GridView + thumbnails + sort/refresh/recursive controls
-4. AppearanceTab.qml: wallpaper section UI (backend, fill, bg color, per-monitor, folders, grid)
-5. shell.qml: instantiate WallpaperService
-6. harness: structural assertions + full verification
+2. harness/lib/wallpaper-commands.mjs + wallpaper-scan.mjs: pure functions
+3. harness/wallpaper-commands.test.mjs: 20 test cases
+4. WallpaperService.qml: backend probe, conflict probe, folder scan, apply
+5. WallpaperGrid.qml: GridView + thumbnails + sort/refresh/recursive controls
+6. AppearanceTab.qml: wallpaper section UI (backend, fill, bg color, per-monitor, folders, grid)
+7. shell.qml: instantiate WallpaperService
+8. harness: structural assertions + full verification
