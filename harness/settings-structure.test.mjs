@@ -96,6 +96,15 @@ test("auto theme bridge is mounted and writes daemon state into Theme", async ()
   assert.match(bridge, /Theme\._autoLight\s*=/);
 });
 
+test("AppearanceTab time inputs normalize and commit on Enter or focus loss", async () => {
+  const tab = await read("modules/settings/tabs/AppearanceTab.qml");
+  assert.match(tab, /SettingsSpec\.normalizeTime/);
+  assert.match(tab, /inputMask:\s*"00:00"/);
+  assert.match(tab, /onEditingFinished:\s*timeField\.commitValue\(\)/);
+  assert.match(tab, /onActiveFocusChanged/);
+  assert.match(tab, /HH:MM or HHMM/);
+});
+
 test("Bar.qml binds canvas shape and flatten policy to SettingsData", async () => {
   const bar = await read("modules/bar/Bar.qml");
   assert.match(bar, /SettingsData\.barFlattenOnMaximized/);
@@ -282,6 +291,18 @@ test("WallpaperService.qml has backend probe, scan, and apply functions", async 
   assert.match(ws, /swaybg.*-i/);
 });
 
+test("WallpaperService restores persisted wallpapers after SettingsData loads", async () => {
+  const ws = await read("modules/services/WallpaperService.qml");
+  const data = await read("modules/common/SettingsData.qml");
+  assert.match(data, /readonly property bool loaded:\s*_hasLoaded/);
+  assert.match(ws, /function restoreWallpaper/);
+  assert.match(ws, /function applyConfiguredWallpapers/);
+  assert.match(ws, /SettingsData\.loaded/);
+  assert.match(ws, /SettingsData\.wallpaperPath/);
+  assert.match(ws, /SettingsData\.wallpaperMonitorPaths/);
+  assert.match(ws, /restoreTimer/);
+});
+
 test("WallpaperGrid.qml has GridView with async Image delegates", async () => {
   const wg = await read("modules/settings/widgets/WallpaperGrid.qml");
   assert.match(wg, /GridView/);
@@ -291,6 +312,15 @@ test("WallpaperGrid.qml has GridView with async Image delegates", async () => {
   assert.match(wg, /sourceSize/);
   assert.match(wg, /cacheBuffer/);
   assert.match(wg, /imageClicked/);
+  assert.match(wg, /verticalLayoutDirection:\s*GridView\.TopToBottom/);
+  assert.match(wg, /onImageListChanged/);
+  assert.match(wg, /revealTimer/);
+  assert.match(wg, /_revealNextReady/);
+  assert.match(wg, /imageIndex === 0/);
+  assert.match(wg, /_renderCursor/);
+  assert.match(wg, /_markImageReady/);
+  assert.match(wg, /_retentionBuffer/);
+  assert.match(wg, /onContentYChanged/);
 });
 
 test("AppearanceTab has wallpaper backend, fill mode, and folders UI", async () => {
@@ -302,6 +332,29 @@ test("AppearanceTab has wallpaper backend, fill mode, and folders UI", async () 
   assert.match(tab, /wallpaperDirs/);
   assert.match(tab, /WallpaperGrid/);
   assert.match(tab, /folderPicker/);
+});
+
+test("AppearanceTab persists per-monitor wallpaper paths", async () => {
+  const tab = await read("modules/settings/tabs/AppearanceTab.qml");
+  assert.match(tab, /function _monitorPaths/);
+  assert.match(tab, /wallpaperMonitorPaths/);
+  assert.match(tab, /monitorPaths\[output\] = path/);
+  assert.match(tab, /JSON\.stringify\(monitorPaths\)/);
+});
+
+test("AppearanceTab rescans persisted wallpaper folders on startup and settings changes", async () => {
+  const tab = await read("modules/settings/tabs/AppearanceTab.qml");
+  assert.match(tab, /Component\.onCompleted:[\s\S]*_scheduleRescan\(\)/);
+  assert.match(tab, /onWallpaperDirsChanged\(\)/);
+  assert.match(tab, /onWallpaperRecursiveChanged\(\)/);
+  assert.match(tab, /scanDebounce/);
+});
+
+test("StyledScrollbar accounts for Flickable originY when mapping scroll position", async () => {
+  const scrollbar = await read("modules/common/StyledScrollbar.qml");
+  assert.match(scrollbar, /property real _originY/);
+  assert.match(scrollbar, /contentY - _originY/);
+  assert.match(scrollbar, /_originY \+ ratio \* root\._scrollRange/);
 });
 
 test("shell.qml instantiates WallpaperService", async () => {

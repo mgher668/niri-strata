@@ -37,7 +37,7 @@ Scope {
             }
 
             margins {
-                top: Config.bar.height + Config.bar.margin * 2
+                top: Config.bar.height + Config.sidebar.margin
             }
 
             Column {

@@ -11,6 +11,7 @@ import {
   insertInclude,
   mergeSettings,
   migrateSettings,
+  normalizeTime,
 } from "./lib/settings-core.mjs";
 
 const EXPECTED_DEFAULTS = {
@@ -96,6 +97,15 @@ test("coerceValue falls back to default for invalid enum, keeps valid enum", () 
 test("coerceValue validates accentColor regex, rejecting non-hex", () => {
   assert.deepEqual(coerceValue("accentColor", "#ff0000"), { value: "#ff0000", ok: true });
   assert.deepEqual(coerceValue("accentColor", "red"), { value: "", ok: false });
+});
+
+test("time settings normalize compact input and reject invalid clock values", () => {
+  assert.equal(normalizeTime("09:00"), "09:00");
+  assert.equal(normalizeTime("0900"), "09:00");
+  assert.equal(normalizeTime("900"), "09:00");
+  assert.equal(normalizeTime("24:00"), "");
+  assert.equal(coerceValue("autoTimeEnd", "0900").value, "09:00");
+  assert.deepEqual(coerceValue("autoTimeEnd", "09:60"), { value: "06:00", ok: false });
 });
 
 test("mergeSettings keeps known keys and drops unknown keys", () => {

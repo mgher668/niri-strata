@@ -46,8 +46,8 @@ var spec = {
     "niriWindowCornerRadius": { "type": "int", "default": 0, "min": 0, "max": 30 },
     "niriPreferNoCsd": { "type": "bool", "default": true },
     "autoMode": { "type": "string", "default": "time", "enum": ["time", "sun"] },
-    "autoTimeStart": { "type": "string", "default": "18:00" },
-    "autoTimeEnd": { "type": "string", "default": "06:00" },
+    "autoTimeStart": { "type": "time", "default": "18:00" },
+    "autoTimeEnd": { "type": "time", "default": "06:00" },
     "autoLat": { "type": "real", "default": 0.0, "min": -90.0, "max": 90.0 },
     "autoLng": { "type": "real", "default": 0.0, "min": -180.0, "max": 180.0 },
     "wallpaperPath": { "type": "string", "default": "" },
@@ -124,6 +124,30 @@ function inEnum(value, allowed) {
     return false;
 }
 
+// Normalize user-entered clock values to HH:MM. Accepts both "09:00"
+// and the quicker four-digit form "0900" (also accepts "900").
+function normalizeTime(rawValue) {
+    var raw = (rawValue === null || rawValue === undefined) ? "" : String(rawValue);
+    var digits = "";
+    for (var i = 0; i < raw.length; i++) {
+        var c = raw.charAt(i);
+        if (c >= "0" && c <= "9")
+            digits += c;
+    }
+
+    if (digits.length !== 3 && digits.length !== 4)
+        return "";
+
+    var hourDigits = digits.length === 3 ? digits.substring(0, 1) : digits.substring(0, 2);
+    var minuteDigits = digits.substring(digits.length - 2);
+    var hour = parseInt(hourDigits, 10);
+    var minute = parseInt(minuteDigits, 10);
+    if (isNaN(hour) || isNaN(minute) || hour > 23 || minute > 59)
+        return "";
+
+    return (hour < 10 ? "0" : "") + hour + ":" + (minute < 10 ? "0" : "") + minute;
+}
+
 // Returns the coerced/clamped value for `key`, or the default if invalid.
 // Unknown keys pass `rawValue` through unchanged.
 function coerce(key, rawValue) {
@@ -166,6 +190,11 @@ function coerce(key, rawValue) {
             }
         }
         return entry.default;
+    }
+
+    if (type === "time") {
+        var normalized = normalizeTime(rawValue);
+        return normalized.length > 0 ? normalized : entry.default;
     }
 
     if (type === "string") {

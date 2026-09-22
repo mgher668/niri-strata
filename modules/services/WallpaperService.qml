@@ -16,6 +16,14 @@ Item {
     property var imageList: []
     property string scanStatus: "idle"
     property string scanError: ""
+    property bool _initialRestoreDone: false
+    property var _pendingSwwwEntries: []
+    property int _swwwEntryIndex: 0
+    property bool _swwwBatchSuccess: true
+    property string _swwwFillColor: ""
+    property var _pendingSwaybgEntries: []
+    property string _swaybgFillMode: "fill"
+    property string _swaybgBgColor: ""
 
     signal imagesReady(var paths)
     signal wallpaperApplied(bool success)
@@ -23,6 +31,78 @@ Item {
     Component.onCompleted: {
         probeBackends();
         probeConflicts();
+        restoreTimer.start();
+    }
+
+    Connections {
+        target: SettingsData
+        function onLoadedChanged() {
+            root.restoreWallpaper();
+        }
+    }
+
+    Timer {
+        id: restoreTimer
+        interval: 100
+        repeat: false
+        onTriggered: root.restoreWallpaper()
+    }
+
+    function _persistedWallpaperEntries() {
+        var globalPath = SettingsData.wallpaperPath;
+        var entries = [];
+
+        if (SettingsData.wallpaperPerMonitor) {
+            var monitorPaths = {};
+            try {
+                var parsed = JSON.parse(SettingsData.wallpaperMonitorPaths);
+                if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+                    monitorPaths = parsed;
+            } catch (e) {}
+
+            var screens = Quickshell.screens;
+            var monitorNames = [];
+            for (var i = 0; i < screens.length; i++)
+                monitorNames.push(screens[i].name);
+
+            // If outputs are not exposed yet, still use persisted names. This
+            // lets the backend receive the restore request during early login.
+            if (monitorNames.length === 0)
+                monitorNames = Object.keys(monitorPaths);
+
+            for (var j = 0; j < monitorNames.length; j++) {
+                var name = monitorNames[j];
+                var path = monitorPaths[name];
+                if ((typeof path !== "string" || path.length === 0)
+                        && globalPath && globalPath.length > 0)
+                    path = globalPath;
+                if (typeof path === "string" && path.length > 0)
+                    entries.push({ path: path, output: name });
+            }
+        }
+
+        // Older settings and an empty monitor map fall back to the global
+        // selection, preserving the single-wallpaper behavior.
+        if (entries.length === 0 && globalPath && globalPath.length > 0)
+            entries.push({ path: globalPath, output: "" });
+
+        return entries;
+    }
+
+    function restoreWallpaper() {
+        if (_initialRestoreDone || !SettingsData.loaded)
+            return;
+
+        var entries = _persistedWallpaperEntries();
+        _initialRestoreDone = true;
+        if (entries.length > 0)
+            _applyEntries(entries);
+    }
+
+    function applyConfiguredWallpapers() {
+        var entries = _persistedWallpaperEntries();
+        if (entries.length > 0)
+            _applyEntries(entries);
     }
 
     function configDir() {
@@ -133,9 +213,13 @@ Item {
                     // Fall back to name sort.
                 }
                 lines.sort((a, b) => {
-                    var nameA = a.split("/").pop().toLowerCase();
-                    var nameB = b.split("/").pop().toLowerCase();
-                    return nameA.localeCompare(nameB);
+                    // Sort the complete path so the grid has a deterministic
+                    // top-to-bottom order, including duplicate filenames in
+                    // different folders.
+                    var pathA = a.toLowerCase();
+                    var pathB = b.toLowerCase();
+                    var result = pathA.localeCompare(pathB);
+                    return result !== 0 ? result : a.localeCompare(b);
                 });
                 if (_currentSortOrder === "descending")
                     lines.reverse();
@@ -164,61 +248,111 @@ Item {
     // ── Apply wallpaper ──
 
     function applyWallpaper(path, output) {
-        if (!path || path.length === 0) return;
+        if (!path || path.length === 0)
+            return;
+
+        _applyEntries([{ path: path, output: output || "" }]);
+    }
+
+    function _applyEntries(entries) {
+        if (!entries || entries.length === 0)
+            return;
 
         var backend = SettingsData.wallpaperBackend;
         var fillColor = SettingsData.wallpaperBgColor;
         var fillMode = SettingsData.wallpaperFillMode;
 
         if (backend === "swww") {
-            _applySwww(path, output, fillColor);
+            _applySwwwEntries(entries, fillColor);
         } else if (backend === "swaybg") {
-            _applySwaybg(path, output, fillMode, fillColor);
+            _applySwaybgEntries(entries, fillMode, fillColor);
         }
     }
 
     function _applySwww(path, output, fillColor) {
-        var args = ["swww", "img", path, "--transition-type", "fade"];
-        if (output && output.length > 0)
-            args.push("-o", output);
-        if (fillColor && fillColor.length > 0)
-            args.push("--fill-color", fillColor);
+        _applySwwwEntries([{ path: path, output: output || "" }], fillColor);
+    }
 
-        // Check daemon, start if needed
-        swwwDaemonCheck.command = ["sh", "-c", "pgrep -x swww-daemon || swww-daemon"];
-        swwwDaemonCheck._pendingArgs = args;
+    function _applySwwwEntries(entries, fillColor) {
+        _pendingSwwwEntries = entries;
+        _swwwEntryIndex = 0;
+        _swwwBatchSuccess = true;
+        _swwwFillColor = fillColor || "";
+
+        // Check daemon, start if needed. The daemon must be backgrounded so
+        // this process can exit and the image command can run.
+        swwwDaemonCheck.command = ["sh", "-c",
+            "if pgrep -x swww-daemon >/dev/null 2>&1; then exit 0; fi; "
+            + "swww-daemon >/dev/null 2>&1 &"];
         swwwDaemonCheck.running = true;
     }
 
     Process {
         id: swwwDaemonCheck
-        property var _pendingArgs: []
         command: []
-        onExited: (exitCode) => {
-            // Small delay for daemon to be ready
-            applyProcess.command = _pendingArgs;
-            applyProcess.running = true;
+        onExited: {
+            // Small delay for a newly spawned daemon to be ready.
+            swwwReadyDelay.restart();
         }
     }
 
+    Timer {
+        id: swwwReadyDelay
+        interval: 500
+        repeat: false
+        onTriggered: root._runNextSwww()
+    }
+
+    function _runNextSwww() {
+        if (_swwwEntryIndex >= _pendingSwwwEntries.length) {
+            wallpaperApplied(_swwwBatchSuccess);
+            return;
+        }
+
+        var entry = _pendingSwwwEntries[_swwwEntryIndex];
+        var args = ["swww", "img", entry.path, "--transition-type", "fade"];
+        if (entry.output && entry.output.length > 0)
+            args.push("-o", entry.output);
+        if (_swwwFillColor.length > 0)
+            args.push("--fill-color", _swwwFillColor);
+
+        applyProcess.command = args;
+        applyProcess.running = true;
+    }
+
     function _applySwaybg(path, output, fillMode, bgColor) {
-        // Kill previous swaybg first
+        _applySwaybgEntries(
+            [{ path: path, output: output || "" }],
+            fillMode,
+            bgColor
+        );
+    }
+
+    function _applySwaybgEntries(entries, fillMode, bgColor) {
+        _pendingSwaybgEntries = entries;
+        _swaybgFillMode = fillMode || "fill";
+        _swaybgBgColor = bgColor || "";
+
+        // Kill previous swaybg instances once, then launch one detached
+        // process per output. This keeps per-monitor restore independent.
         swaybgKill.command = ["pkill", "-x", "swaybg"];
-        swaybgKill._pendingArgs = ["swaybg", "-i", path, "-m", fillMode || "fill"];
-        if (output && output.length > 0)
-            swaybgKill._pendingArgs.push("-o", output);
-        if (bgColor && bgColor.length > 0)
-            swaybgKill._pendingArgs.push("-c", bgColor);
         swaybgKill.running = true;
     }
 
     Process {
         id: swaybgKill
-        property var _pendingArgs: []
         command: []
         onExited: {
-            applyProcess.command = _pendingArgs;
-            applyProcess.running = true;
+            for (var i = 0; i < _pendingSwaybgEntries.length; i++) {
+                var entry = _pendingSwaybgEntries[i];
+                var args = ["swaybg", "-i", entry.path, "-m", _swaybgFillMode];
+                if (entry.output && entry.output.length > 0)
+                    args.push("-o", entry.output);
+                if (_swaybgBgColor.length > 0)
+                    args.push("-c", _swaybgBgColor);
+                Quickshell.execDetached(args);
+            }
+            wallpaperApplied(true);
         }
     }
 
@@ -233,7 +367,15 @@ Item {
             }
         }
         onExited: (exitCode) => {
-            wallpaperApplied(exitCode === 0);
+            _swwwEntryIndex++;
+            if (exitCode !== 0) {
+                _swwwBatchSuccess = false;
+                console.warn("Wallpaper apply error: swww exited with code " + exitCode);
+            }
+            if (_swwwEntryIndex < _pendingSwwwEntries.length)
+                root._runNextSwww();
+            else
+                wallpaperApplied(_swwwBatchSuccess);
         }
     }
 }

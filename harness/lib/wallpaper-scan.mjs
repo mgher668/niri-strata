@@ -77,9 +77,10 @@ export function parseFileList(rawText, sortBy, sortOrder) {
   // Name sort
   const paths = [...lines];
   paths.sort((a, b) => {
-    const nameA = a.split("/").pop().toLowerCase();
-    const nameB = b.split("/").pop().toLowerCase();
-    return nameA.localeCompare(nameB);
+    const pathA = a.toLowerCase();
+    const pathB = b.toLowerCase();
+    const result = pathA.localeCompare(pathB);
+    return result !== 0 ? result : a.localeCompare(b);
   });
 
   if (sortOrder === "descending")

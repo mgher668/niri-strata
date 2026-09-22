@@ -15,6 +15,7 @@ Item {
 
     // --- Parse / load state ---
     readonly property bool loading: _loading
+    readonly property bool loaded: _hasLoaded
     readonly property bool parseError: _parseError
     readonly property string parseErrorMessage: _parseErrorMessage
 

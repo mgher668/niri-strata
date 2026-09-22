@@ -43,8 +43,8 @@ export const SETTINGS_SPEC = {
   niriWindowCornerRadius: { type: "int", default: 0, min: 0, max: 30 },
   niriPreferNoCsd: { type: "bool", default: true },
   autoMode: { type: "string", default: "time", enum: ["time", "sun"] },
-  autoTimeStart: { type: "string", default: "18:00" },
-  autoTimeEnd: { type: "string", default: "06:00" },
+  autoTimeStart: { type: "time", default: "18:00" },
+  autoTimeEnd: { type: "time", default: "06:00" },
   autoLat: { type: "real", default: 0.0, min: -90.0, max: 90.0 },
   autoLng: { type: "real", default: 0.0, min: -180.0, max: 180.0 },
   wallpaperPath: { type: "string", default: "" },
@@ -82,6 +82,21 @@ function clampNumber(num, spec) {
     value = spec.max;
   }
   return value;
+}
+
+export function normalizeTime(rawValue) {
+  const raw = String(rawValue ?? "");
+  const digits = raw.replace(/[^0-9]/g, "");
+  if (digits.length !== 3 && digits.length !== 4) return "";
+
+  const hourText = digits.length === 3 ? digits.slice(0, 1) : digits.slice(0, 2);
+  const minuteText = digits.slice(-2);
+  const hour = Number.parseInt(hourText, 10);
+  const minute = Number.parseInt(minuteText, 10);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour > 23 || minute > 59) {
+    return "";
+  }
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
 export function coerceValue(key, rawValue) {
@@ -125,6 +140,10 @@ export function coerceValue(key, rawValue) {
         if (lower === "false") return { value: false, ok: true };
       }
       return { value: spec.default, ok: false };
+    }
+    case "time": {
+      const normalized = normalizeTime(rawValue);
+      return normalized ? { value: normalized, ok: true } : { value: spec.default, ok: false };
     }
     case "string": {
       if (typeof rawValue === "string") {

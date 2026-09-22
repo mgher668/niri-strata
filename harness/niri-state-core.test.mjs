@@ -902,8 +902,8 @@ test("styles sidebar shell as a Material You control center surface", async () =
   const sidebar = await readFile(join(root, "../modules/sidebar/Sidebar.qml"), "utf8");
 
   assert.match(config, /wheelScrollFactor/);
-  assert.match(sidebar, /implicitWidth:\s*Config\.sidebar\.width \+ Config\.sidebar\.margin \* 2/);
-  assert.doesNotMatch(sidebar, /implicitWidth:\s*modelData\.width/);
+  assert.match(sidebar, /implicitWidth:\s*modelData\.width/);
+  assert.match(sidebar, /anchors\s*\{[\s\S]*left:\s*true[\s\S]*right:\s*true/);
   assert.match(sidebar, /id:\s*scrim[\s\S]*color:\s*Theme\.colors\.transparent/);
   assert.match(sidebar, /radius:\s*Theme\.rounding\.xxl/);
   assert.match(sidebar, /Theme\.colors\.surfaceContainerLow/);
@@ -1078,6 +1078,9 @@ test("wires notification ownership into sidebar and focused-output toasts", asyn
   assert.doesNotMatch(notifications, /entry\.notification\.dismiss\(\)/);
   assert.match(sidebar, /required property var notificationService/);
   assert.match(sidebar, /NotificationCenter\s*\{/);
+  assert.match(sidebar, /implicitWidth:\s*modelData\.width/);
+  assert.match(sidebar, /anchors\s*\{[\s\S]*left:\s*true[\s\S]*right:\s*true/);
+  assert.match(sidebar, /MouseArea\s*\{[\s\S]*onClicked:\s*root\.controller\.close\(\)/);
   assert.match(center, /root\.service\.toggleDoNotDisturb\(\)/);
   assert.match(center, /root\.service\.clearAll\(\)/);
   assert.match(groupCard, /root\.service\.dismissNotification\(modelData\.notificationId\)/);
@@ -1112,8 +1115,8 @@ test("wires notification ownership into sidebar and focused-output toasts", asyn
   assert.match(toast, /modelData\.name === root\.targetOutputName/);
   assert.match(toast, /root\.service\.popupNotifications\.slice\(0, 3\)/);
   assert.match(toast, /implicitHeight:\s*toastColumn\.implicitHeight \+ Config\.sidebar\.margin/);
-  assert.match(toast, /margins\s*\{[\s\S]*top:\s*Config\.bar\.height \+ Config\.bar\.margin \* 2/);
-  assert.doesNotMatch(toast, /topMargin:\s*Config\.bar\.height \+ Config\.bar\.margin \* 2/);
+  assert.match(toast, /margins\s*\{[\s\S]*top:\s*Config\.bar\.height \+ Config\.sidebar\.margin/);
+  assert.doesNotMatch(toast, /Config\.bar\.margin/);
   assert.match(toast, /DismissibleNotificationCard\s*\{[\s\S]*bodyLineCount:\s*2/);
   assert.match(toast, /DismissibleNotificationCard\s*\{[\s\S]*service:\s*root\.service/);
   assert.match(toast, /root\.service\.dismissNotification\(modelData\.notificationId\)/);

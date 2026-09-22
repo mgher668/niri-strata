@@ -39,7 +39,9 @@ Scope {
             visible: shown
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore
-            implicitWidth: Config.sidebar.width + Config.sidebar.margin * 2
+            // Keep the input surface full-screen so the scrim can dismiss the
+            // modal when the user clicks anywhere outside the panel.
+            implicitWidth: modelData.width
             implicitHeight: modelData.height
             WlrLayershell.namespace: "quickshell:sidebar"
             WlrLayershell.layer: WlrLayer.Top
@@ -48,6 +50,7 @@ Scope {
             anchors {
                 top: true
                 bottom: true
+                left: true
                 right: true
             }
 

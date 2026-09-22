@@ -133,8 +133,9 @@ All within `AppearanceTab.qml`, in the Dynamic mode section.
 - `Image.asynchronous: true` — off-main-thread decode
 - `Image.sourceSize: Qt.size(180, 120)` — limit decode resolution
 - `Image.cache: true` — Qt caches decoded thumbnails
-- `ListView`/`GridView` only creates visible delegates + `cacheBuffer: 2000`
-  — 600 images won't lag; only ~20 decoded at any time
+- `ListView`/`GridView` starts with a 512px cache buffer and expands it as the
+  user visits more rows, keeping already-rendered thumbnails alive without
+  delaying the first row
 
 ### Folder scanner
 

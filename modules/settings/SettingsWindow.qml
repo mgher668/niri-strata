@@ -18,7 +18,6 @@ FloatingWindow {
     implicitWidth: 780
     implicitHeight: 560
     minimumSize: Qt.size(600, 400)
-    maximumSize: Qt.size(1000, 700)
     color: Theme.colors.surfaceContainer
 
     onVisibleChanged: {

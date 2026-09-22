@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Io
 import QtQuick.Layouts
 import "../../common/"
+import "../../common/settings/SettingsSpec.js" as SettingsSpec
 import "../widgets/"
 
 // AppearanceTab — theme + motion settings.
@@ -13,6 +14,13 @@ ColumnLayout {
 
     spacing: 16
     Layout.fillWidth: true
+
+    Component.onCompleted: {
+        if (typeof wallpaperService !== "undefined" && wallpaperService.imageList.length > 0)
+            wallpaperGrid.imageList = wallpaperService.imageList;
+        root._ensureSelectedMonitor();
+        root._scheduleRescan();
+    }
 
     // --- Theme ---
     SettingsSectionHeader {
@@ -63,7 +71,14 @@ ColumnLayout {
                 }
 
                 StyledText {
-                    text: "Dark mode starts at the \"Dark from\" time and ends at the \"Light from\" time."
+                    text: {
+                        var start = root.settingsData.autoTimeStart;
+                        var end = root.settingsData.autoTimeEnd;
+                        var overnight = start > end ? " (overnight)" : "";
+                        return "Dark: " + start + "–" + end + overnight
+                            + ". Light: " + end + "–" + start
+                            + ". Enter HH:MM or HHMM; press Enter or click away to apply.";
+                    }
                     font.pixelSize: Theme.font.xs
                     color: Theme.colors.subtleText
                     wrapMode: Text.WordWrap
@@ -108,12 +123,32 @@ ColumnLayout {
 
         // --- Time field component ---
         component TimeField: RowLayout {
+            id: timeField
             Layout.fillWidth: true
             spacing: Theme.spacing.md
 
             property string label
             property string value
             signal commit(string v)
+
+            function syncFromValue() {
+                if (typeof timeInput !== "undefined" && !timeInput.activeFocus)
+                    timeInput.text = SettingsSpec.normalizeTime(value) || value;
+            }
+
+            function commitValue() {
+                var normalized = SettingsSpec.normalizeTime(timeInput.text);
+                if (!normalized) {
+                    timeInput.text = value;
+                    return;
+                }
+
+                timeInput.text = normalized;
+                if (normalized !== value)
+                    timeField.commit(normalized);
+            }
+
+            onValueChanged: syncFromValue()
 
             StyledText {
                 text: label
@@ -123,12 +158,12 @@ ColumnLayout {
             }
 
             Rectangle {
-                width: 64
-                height: 28
+                Layout.preferredWidth: 88
+                Layout.preferredHeight: 34
                 radius: Theme.rounding.xs
                 color: Theme.colors.surfaceContainerHigh
                 border.width: Theme.elevation.outlineWidth
-                border.color: Theme.colors.outlineVariant
+                border.color: timeInput.activeFocus ? Theme.colors.primary : Theme.colors.outlineVariant
 
                 TextInput {
                     id: timeInput
@@ -140,11 +175,21 @@ ColumnLayout {
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     maximumLength: 5
-                    inputMask: "99:99"
+                    inputMask: "00:00"
+                    overwriteMode: true
                     activeFocusOnPress: true
                     autoScroll: true
-                    Component.onCompleted: text = value
-                    onAccepted: commit(text)
+                    selectByMouse: true
+                    inputMethodHints: Qt.ImhDigitsOnly
+                    Component.onCompleted: timeField.syncFromValue()
+                    onActiveFocusChanged: {
+                        if (activeFocus)
+                            selectAll();
+                        else
+                            timeField.commitValue();
+                    }
+                    onAccepted: timeField.commitValue()
+                    onEditingFinished: timeField.commitValue()
                 }
             }
         }
@@ -209,95 +254,6 @@ ColumnLayout {
         selectedCallback: (val) => root.settingsData.set("themeId", val)
     }
 
-    // Dynamic mode config — shown only when preset is "dynamic"
-    ColumnLayout {
-        Layout.fillWidth: true
-        visible: root.settingsData.themeId === "dynamic"
-        spacing: 12
-
-        RowLayout {
-            spacing: 8
-
-            TextField {
-                label: "Wallpaper"
-                value: root.settingsData.wallpaperPath
-                onCommit: (v) => root.settingsData.set("wallpaperPath", v)
-                Layout.fillWidth: true
-            }
-
-            IconButton {
-                icon: "folder_open"
-                size: 28
-                iconSize: 16
-                onClicked: {
-                    wallpaperPicker.command = [
-                        "zenity", "--file-selection",
-                        "--title=Select wallpaper",
-                        "--file-filter=Images | *.png *.jpg *.jpeg *.webp *.bmp *.gif",
-                    ];
-                    wallpaperPicker.running = true;
-                }
-            }
-        }
-
-        RowLayout {
-            spacing: 8
-
-            IconButton {
-                icon: "auto_awesome"
-                size: 28
-                iconSize: 16
-                onClicked: {
-                    if (typeof themeEngine !== "undefined") {
-                        if (root.settingsData.wallpaperPath.length > 0)
-                            themeEngine.generate(root.settingsData.wallpaperPath);
-                        else
-                            themeEngine.generateFromHex("#42a5f5");
-                    }
-                }
-            }
-
-            StyledText {
-                text: {
-                    if (typeof themeEngine === "undefined") return "ThemeEngine not available";
-                    if (themeEngine.status === "generating") return "Generating...";
-                    if (themeEngine.status === "ready") return "Palette ready";
-                    if (themeEngine.status === "error") return "Error: " + themeEngine.errorMessage;
-                    return "Click to generate palette";
-                }
-                font.pixelSize: Theme.font.xs
-                color: {
-                    if (typeof themeEngine === "undefined") return Theme.colors.errorColor;
-                    if (themeEngine.status === "error") return Theme.colors.errorColor;
-                    if (themeEngine.status === "ready") return Theme.colors.successColor;
-                    return Theme.colors.subtleText;
-                }
-            }
-        }
-
-        StyledText {
-            text: "Requires matugen. Enter a wallpaper path or leave empty to generate from the default blue accent."
-            font.pixelSize: Theme.font.xs
-            color: Theme.colors.subtleText
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
-
-        Process {
-            id: wallpaperPicker
-            command: []
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    var path = text.trim();
-                    if (path.length > 0) {
-                        root.settingsData.set("wallpaperPath", path);
-                        if (typeof themeEngine !== "undefined")
-                            themeEngine.generate(path);
-                    }
-                }
-            }
-        }
-    }
     // ── Wallpaper manager ──
     SettingsSectionHeader {
         title: "Wallpaper"
@@ -380,7 +336,7 @@ ColumnLayout {
     SettingsSegmentedRow {
         visible: root.settingsData.wallpaperPerMonitor
         label: "Monitor"
-        value: ""
+        value: root._selectedMonitor
         options: {
             if (typeof Quickshell === "undefined") return [];
             return Quickshell.screens.map(s => ({ label: s.name, value: s.name }));
@@ -389,6 +345,29 @@ ColumnLayout {
     }
 
     property string _selectedMonitor: ""
+
+    function _ensureSelectedMonitor() {
+        if (root._selectedMonitor.length > 0 || typeof Quickshell === "undefined")
+            return;
+        if (Quickshell.screens.length > 0)
+            root._selectedMonitor = Quickshell.screens[0].name;
+    }
+
+    function _monitorPaths() {
+        try {
+            var parsed = JSON.parse(root.settingsData.wallpaperMonitorPaths);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+                return parsed;
+        } catch (e) {}
+        return {};
+    }
+
+    property string _selectedWallpaperPath: {
+        if (!root.settingsData.wallpaperPerMonitor)
+            return root.settingsData.wallpaperPath;
+        var paths = root._monitorPaths();
+        return paths[root._selectedMonitor] || root.settingsData.wallpaperPath;
+    }
 
     // Wallpaper folders list
     SettingsSectionHeader {
@@ -426,7 +405,7 @@ ColumnLayout {
                         try { dirs = JSON.parse(root.settingsData.wallpaperDirs); } catch(e) {}
                         dirs.splice(index, 1);
                         root.settingsData.set("wallpaperDirs", JSON.stringify(dirs));
-                        root._rescanWallpapers();
+                        root._scheduleRescan();
                     }
                 }
             }
@@ -467,7 +446,7 @@ ColumnLayout {
                         if (dirs.indexOf(dir) < 0) {
                             dirs.push(dir);
                             root.settingsData.set("wallpaperDirs", JSON.stringify(dirs));
-                            root._rescanWallpapers();
+                            root._scheduleRescan();
                         }
                     }
                 }
@@ -483,17 +462,85 @@ ColumnLayout {
         sortBy: root.settingsData.wallpaperSortBy
         sortOrder: root.settingsData.wallpaperSortOrder
         recursive: root.settingsData.wallpaperRecursive
-        selectedPath: root.settingsData.wallpaperPath
+        selectedPath: root._selectedWallpaperPath
 
-        onRescan: root._rescanWallpapers()
+        onSortRequested: function(value) {
+            root.settingsData.set("wallpaperSortBy", value);
+        }
+        onSortOrderRequested: function(value) {
+            root.settingsData.set("wallpaperSortOrder", value);
+        }
+        onRecursiveRequested: function(value) {
+            root.settingsData.set("wallpaperRecursive", value);
+        }
+        onRescan: root._scheduleRescan()
         onImageClicked: function(path) {
-            root.settingsData.set("wallpaperPath", path);
             var output = root.settingsData.wallpaperPerMonitor ? root._selectedMonitor : "";
-            if (typeof wallpaperService !== "undefined")
-                wallpaperService.applyWallpaper(path, output);
+            if (root.settingsData.wallpaperPerMonitor && output.length > 0) {
+                var monitorPaths = root._monitorPaths();
+                monitorPaths[output] = path;
+                root.settingsData.set("wallpaperMonitorPaths", JSON.stringify(monitorPaths));
+            } else {
+                root.settingsData.set("wallpaperPath", path);
+            }
+            if (typeof wallpaperService !== "undefined") {
+                if (root.settingsData.wallpaperPerMonitor)
+                    wallpaperService.applyConfiguredWallpapers();
+                else
+                    wallpaperService.applyWallpaper(path, output);
+            }
             if (typeof themeEngine !== "undefined")
                 themeEngine.generate(path);
         }
+    }
+
+    // Palette generation status — shown in Dynamic mode.
+    // Clicking a wallpaper thumbnail triggers themeEngine.generate(path)
+    // (wired in onImageClicked above). This just reflects the result.
+    RowLayout {
+        Layout.fillWidth: true
+        visible: root.settingsData.themeId === "dynamic"
+        spacing: 8
+
+        MaterialIcon {
+            name: "auto_awesome"
+            size: 16
+            iconColor: {
+                if (typeof themeEngine === "undefined") return Theme.colors.errorColor;
+                if (themeEngine.status === "generating") return Theme.colors.primary;
+                if (themeEngine.status === "ready") return Theme.colors.successColor;
+                if (themeEngine.status === "error") return Theme.colors.errorColor;
+                return Theme.colors.subtleText;
+            }
+        }
+
+        StyledText {
+            text: {
+                if (typeof themeEngine === "undefined") return "ThemeEngine not available";
+                if (themeEngine.status === "generating") return "Generating palette...";
+                if (themeEngine.status === "ready") return "Palette ready";
+                if (themeEngine.status === "error") return "Error: " + themeEngine.errorMessage;
+                return "Click a wallpaper to generate palette";
+            }
+            font.pixelSize: Theme.font.xs
+            color: {
+                if (typeof themeEngine === "undefined") return Theme.colors.errorColor;
+                if (themeEngine.status === "error") return Theme.colors.errorColor;
+                if (themeEngine.status === "ready") return Theme.colors.successColor;
+                return Theme.colors.subtleText;
+            }
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+    }
+
+    StyledText {
+        visible: root.settingsData.themeId === "dynamic"
+        text: "Dynamic palette: select a wallpaper and colors are generated from it via matugen."
+        font.pixelSize: Theme.font.xs
+        color: Theme.colors.subtleText
+        wrapMode: Text.WordWrap
+        Layout.fillWidth: true
     }
 
     // Conflict warning
@@ -506,8 +553,23 @@ ColumnLayout {
         Layout.fillWidth: true
     }
 
+    Timer {
+        id: scanDebounce
+        interval: 50
+        repeat: false
+        onTriggered: root._rescanWallpapers()
+    }
+
+    function _scheduleRescan() {
+        scanDebounce.restart();
+    }
+
     function _rescanWallpapers() {
         if (typeof wallpaperService === "undefined") return;
+        if (root.settingsData.loading) {
+            root._scheduleRescan();
+            return;
+        }
         var dirs = [];
         try { dirs = JSON.parse(root.settingsData.wallpaperDirs); } catch(e) {}
         wallpaperService.scanFolders(
@@ -521,9 +583,23 @@ ColumnLayout {
     Connections {
         target: typeof wallpaperService !== "undefined" ? wallpaperService : null
         function onImagesReady(paths) {
-            // Update the grid's imageList
+            // Update the grid's imageList; WallpaperGrid resets its viewport
+            // so freshly scanned results are always presented from the top.
             wallpaperGrid.imageList = paths;
         }
+    }
+
+    Connections {
+        target: root.settingsData
+        function onWallpaperPerMonitorChanged() { root._ensureSelectedMonitor(); }
+        function onLoadingChanged() {
+            if (!root.settingsData.loading)
+                root._scheduleRescan();
+        }
+        function onWallpaperDirsChanged() { root._scheduleRescan(); }
+        function onWallpaperSortByChanged() { root._scheduleRescan(); }
+        function onWallpaperSortOrderChanged() { root._scheduleRescan(); }
+        function onWallpaperRecursiveChanged() { root._scheduleRescan(); }
     }
 
     // Accent color swatches
