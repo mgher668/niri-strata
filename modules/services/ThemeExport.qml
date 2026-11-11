@@ -29,6 +29,43 @@ Item {
 
     signal exportComplete(string target, bool success)
 
+    // Mode synchronization is separate from exporting palette CSS: forcing CSS
+    // into GTK applications can conflict with their installed theme.
+    readonly property bool effectiveLight: Theme._isLight
+    readonly property bool modeSyncEnabled: SettingsData.loaded
+        && SettingsData.systemThemeEnabled && SettingsData.systemThemeGtkEnabled
+        && SettingsData.systemThemeApplyOnModeChange
+    onEffectiveLightChanged: if (modeSyncEnabled) modeSyncTimer.restart()
+    onModeSyncEnabledChanged: if (modeSyncEnabled) modeSyncTimer.restart()
+
+    Timer {
+        id: modeSyncTimer
+        interval: 500
+        repeat: false
+        onTriggered: {
+            if (!root.modeSyncEnabled) return;
+            if (modeSyncProcess.running) {
+                restart();
+                return;
+            }
+            var script = decodeURIComponent(String(Qt.resolvedUrl("../../scripts/theme-mode-sync.mjs")).replace(/^file:\/\//, ""));
+            modeSyncProcess.command = ["node", script, root.effectiveLight ? "light" : "dark"];
+            modeSyncProcess.running = true;
+        }
+    }
+
+    Process {
+        id: modeSyncProcess
+        stderr: StdioCollector {
+            onStreamFinished: {
+                if (text.trim()) console.error("System theme sync:", text.trim());
+            }
+        }
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode !== 0) console.error("System theme sync failed:", exitCode);
+        }
+    }
+
     // ── Internal ──
 
     Component.onCompleted: {

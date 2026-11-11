@@ -692,7 +692,7 @@ ColumnLayout {
 
         SettingsToggleRow {
             label: "Apply on mode change"
-            description: "Re-export when light/dark mode switches"
+            description: "Sync the system light/dark preference and adw-gtk3 theme"
             checked: root.settingsData.systemThemeApplyOnModeChange
             toggleCallback: (val) => root.settingsData.set("systemThemeApplyOnModeChange", val)
         }
