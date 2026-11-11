@@ -27,14 +27,14 @@ test("swww command includes -o when output specified", () => {
   assert.deepEqual(cmd, ["swww", "img", "/path/to/wall.jpg", "--transition-type", "fade", "-o", "DP-1"]);
 });
 
-test("swww command includes --fill-color when provided", () => {
+test("swww command passes the fill color as bare hex", () => {
   const cmd = buildSwwwCommand("/path/to/wall.jpg", "", "#1a1a2e");
-  assert.deepEqual(cmd, ["swww", "img", "/path/to/wall.jpg", "--transition-type", "fade", "--fill-color", "#1a1a2e"]);
+  assert.deepEqual(cmd, ["swww", "img", "/path/to/wall.jpg", "--transition-type", "fade", "--fill-color", "1a1a2e"]);
 });
 
 test("swww command with both output and fill-color", () => {
   const cmd = buildSwwwCommand("/path/w.jpg", "HDMI-1", "#000000");
-  assert.deepEqual(cmd, ["swww", "img", "/path/w.jpg", "--transition-type", "fade", "-o", "HDMI-1", "--fill-color", "#000000"]);
+  assert.deepEqual(cmd, ["swww", "img", "/path/w.jpg", "--transition-type", "fade", "-o", "HDMI-1", "--fill-color", "000000"]);
 });
 
 // ── 2. swaybg command construction ──

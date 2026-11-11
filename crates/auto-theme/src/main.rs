@@ -1,7 +1,6 @@
 use chrono::{DateTime, Datelike, Days, Local, LocalResult, NaiveDate, TimeZone, Timelike};
 use serde::Deserialize;
-use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::fs::{self, File, OpenOptions, TryLockError};
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -67,48 +66,36 @@ fn rds() -> String {
         .to_string()
 }
 
-struct InstanceLock {
-    path: PathBuf,
+fn acquire_instance_lock(path: &Path) -> Result<File, TryLockError> {
+    // Keep the inode in place so every instance locks the same file.
+    let file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(path)
+        .map_err(TryLockError::Error)?;
+    file.try_lock()?;
+    Ok(file)
 }
 
-impl Drop for InstanceLock {
-    fn drop(&mut self) {
-        let pid = std::process::id().to_string();
-        let owns_lock = fs::read_to_string(&self.path)
-            .map(|contents| contents.trim() == pid)
-            .unwrap_or(false);
-        if owns_lock {
-            let _ = fs::remove_file(&self.path);
-        }
-    }
-}
+fn legacy_instance_running(path: &Path) -> bool {
+    let Some(pid) = fs::read_to_string(path)
+        .ok()
+        .and_then(|contents| contents.trim().parse::<u32>().ok())
+    else {
+        return false;
+    };
+    let (Ok(previous), Ok(current)) = (
+        fs::read_link(format!("/proc/{pid}/exe")),
+        std::env::current_exe(),
+    ) else {
+        return false;
+    };
 
-fn acquire_instance_lock() -> Option<InstanceLock> {
-    let path = config().join("auto-theme.lock");
-    for _ in 0..2 {
-        match OpenOptions::new().write(true).create_new(true).open(&path) {
-            Ok(mut file) => {
-                if writeln!(file, "{}", std::process::id()).is_err() {
-                    let _ = fs::remove_file(&path);
-                    return None;
-                }
-                return Some(InstanceLock { path });
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                let active = fs::read_to_string(&path)
-                    .ok()
-                    .and_then(|contents| contents.trim().parse::<u32>().ok())
-                    .map(|pid| Path::new(&format!("/proc/{pid}")).exists())
-                    .unwrap_or(false);
-                if active {
-                    return None;
-                }
-                let _ = fs::remove_file(&path);
-            }
-            Err(_) => return None,
-        }
-    }
-    None
+    // A running executable from before an in-place upgrade is marked deleted.
+    let mut replaced = current.into_os_string();
+    replaced.push(" (deleted)");
+    previous.as_os_str() == replaced
 }
 
 fn now() -> u64 {
@@ -310,10 +297,20 @@ fn main() {
         check(&args);
         return;
     }
-    let _instance_lock = match acquire_instance_lock() {
-        Some(lock) => lock,
-        None => return,
+    // Older binaries can remove auto-theme.lock on exit.
+    let lock_path = config().join("auto-theme.flock");
+    let _instance_lock = match acquire_instance_lock(&lock_path) {
+        Ok(lock) => lock,
+        Err(TryLockError::WouldBlock) => return,
+        Err(TryLockError::Error(error)) => {
+            eprintln!("Failed to lock {}: {error}", lock_path.display());
+            return;
+        }
     };
+    if legacy_instance_running(&lock_path.with_file_name("auto-theme.lock")) {
+        eprintln!("Stop the previous auto-theme daemon before starting this version.");
+        return;
+    }
     loop {
         let s = match rs() {
             Some(s) => s,
@@ -354,6 +351,27 @@ mod tests {
             .with_ymd_and_hms(2026, 7, 15, hour, minute, 0)
             .single()
             .unwrap()
+    }
+
+    #[test]
+    fn instance_lock_is_exclusive_and_reusable() {
+        let path = std::env::temp_dir().join(format!(
+            "niri-strata-auto-theme-{}-{}.flock",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let first = acquire_instance_lock(&path).unwrap();
+        assert!(matches!(
+            acquire_instance_lock(&path),
+            Err(TryLockError::WouldBlock)
+        ));
+
+        drop(first);
+        assert!(acquire_instance_lock(&path).is_ok());
+        fs::remove_file(path).unwrap();
     }
 
     #[test]

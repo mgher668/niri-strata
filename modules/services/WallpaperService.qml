@@ -17,10 +17,10 @@ Item {
     property string scanStatus: "idle"
     property string scanError: ""
     property bool _initialRestoreDone: false
-    property var _pendingSwwwEntries: []
+    property var _activeSwwwBatch: null
+    property var _pendingSwwwBatch: null
     property int _swwwEntryIndex: 0
     property bool _swwwBatchSuccess: true
-    property string _swwwFillColor: ""
     property var _pendingSwaybgEntries: []
     property string _swaybgFillMode: "fill"
     property string _swaybgBgColor: ""
@@ -251,10 +251,10 @@ Item {
         if (!path || path.length === 0)
             return;
 
-        _applyEntries([{ path: path, output: output || "" }]);
+        _applyEntries([{ path: path, output: output || "" }], !output);
     }
 
-    function _applyEntries(entries) {
+    function _applyEntries(entries, replacePending = true) {
         if (!entries || entries.length === 0)
             return;
 
@@ -263,21 +263,31 @@ Item {
         var fillMode = SettingsData.wallpaperFillMode;
 
         if (backend === "swww") {
-            _applySwwwEntries(entries, fillColor);
+            _applySwwwEntries(entries, fillColor, replacePending);
         } else if (backend === "swaybg") {
             _applySwaybgEntries(entries, fillMode, fillColor);
         }
     }
 
-    function _applySwww(path, output, fillColor) {
-        _applySwwwEntries([{ path: path, output: output || "" }], fillColor);
+    function _applySwwwEntries(entries, fillColor, replacePending = true) {
+        if (!replacePending && _pendingSwwwBatch) {
+            var outputs = entries.map(entry => entry.output);
+            entries = _pendingSwwwBatch.entries
+                .filter(entry => !outputs.includes(entry.output))
+                .concat(entries);
+        }
+        _pendingSwwwBatch = { entries: entries, fillColor: (fillColor || "").replace(/^#/, "") };
+        if (!_activeSwwwBatch)
+            _startSwwwBatch();
     }
 
-    function _applySwwwEntries(entries, fillColor) {
-        _pendingSwwwEntries = entries;
+    function _startSwwwBatch() {
+        // Keep the running batch's entries and cursor together until its
+        // callbacks finish. New selections only update the pending batch.
+        _activeSwwwBatch = _pendingSwwwBatch;
+        _pendingSwwwBatch = null;
         _swwwEntryIndex = 0;
         _swwwBatchSuccess = true;
-        _swwwFillColor = fillColor || "";
 
         // Check daemon, start if needed. The daemon must be backgrounded so
         // this process can exit and the image command can run.
@@ -304,17 +314,22 @@ Item {
     }
 
     function _runNextSwww() {
-        if (_swwwEntryIndex >= _pendingSwwwEntries.length) {
-            wallpaperApplied(_swwwBatchSuccess);
+        if (_swwwEntryIndex >= _activeSwwwBatch.entries.length) {
+            var success = _swwwBatchSuccess;
+            _activeSwwwBatch = null;
+            if (_pendingSwwwBatch)
+                _startSwwwBatch();
+            wallpaperApplied(success);
             return;
         }
 
-        var entry = _pendingSwwwEntries[_swwwEntryIndex];
-        var args = ["swww", "img", entry.path, "--transition-type", "fade"];
+        var entry = _activeSwwwBatch.entries[_swwwEntryIndex];
+        // Report a missing swww executable as an exit code so the batch can drain.
+        var args = ["sh", "-c", 'exec swww "$@"', "swww", "img", entry.path, "--transition-type", "fade"];
         if (entry.output && entry.output.length > 0)
             args.push("-o", entry.output);
-        if (_swwwFillColor.length > 0)
-            args.push("--fill-color", _swwwFillColor);
+        if (_activeSwwwBatch.fillColor.length > 0)
+            args.push("--fill-color", _activeSwwwBatch.fillColor);
 
         applyProcess.command = args;
         applyProcess.running = true;
@@ -372,10 +387,7 @@ Item {
                 _swwwBatchSuccess = false;
                 console.warn("Wallpaper apply error: swww exited with code " + exitCode);
             }
-            if (_swwwEntryIndex < _pendingSwwwEntries.length)
-                root._runNextSwww();
-            else
-                wallpaperApplied(_swwwBatchSuccess);
+            root._runNextSwww();
         }
     }
 }

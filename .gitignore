@@ -21,4 +21,5 @@ sidebar-*.png
 settings.json
 auto-theme-state.json
 auto-theme.lock
+auto-theme.flock
 target/

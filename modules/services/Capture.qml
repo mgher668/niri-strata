@@ -453,8 +453,8 @@ exit 1`,
             const wasSelecting = root.recordingState === "selectingRegion";
             const stoppedSelection = wasStopping && root.recordingStopSourceState === "selectingRegion";
 
-            root.regionRecordingMonitorTimer.stop();
-            root.recordingStopReconcileTimer.stop();
+            regionRecordingMonitorTimer.stop();
+            recordingStopReconcileTimer.stop();
             root.recordingStopReconcileAttempts = 0;
             root.regionRecordingStartGraceTicks = 0;
 
@@ -500,7 +500,7 @@ exit 1`,
 
             if (root.recordingState === "selectingRegion") {
                 root.recordingState = "idle";
-                root.regionRecordingMonitorTimer.stop();
+                regionRecordingMonitorTimer.stop();
                 root.notify("Recording cancelled", "Region selection cancelled");
                 return;
             }
@@ -516,7 +516,7 @@ exit 1`,
         command: ["bash", "-lc", "pgrep -x wf-recorder >/dev/null 2>&1 || pgrep -x slurp >/dev/null 2>&1"]
         onExited: (exitCode, exitStatus) => {
             if (root.recordingState !== "stopping") {
-                root.recordingStopReconcileTimer.stop();
+                recordingStopReconcileTimer.stop();
                 return;
             }
 

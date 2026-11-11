@@ -12,8 +12,9 @@ export function buildSwwwCommand(path, output, fillColor) {
   const cmd = ["swww", "img", path, "--transition-type", "fade"];
   if (output && output.length > 0)
     cmd.push("-o", output);
-  if (fillColor && fillColor.length > 0)
-    cmd.push("--fill-color", fillColor);
+  const color = fillColor?.replace(/^#/, "");
+  if (color)
+    cmd.push("--fill-color", color);
   return cmd;
 }
 

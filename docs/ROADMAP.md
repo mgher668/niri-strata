@@ -26,28 +26,33 @@ Each feature should be implemented harness-first:
 
 | # | Feature | Status | Detail |
 |---|---|---|---|
-| 1 | Recording enhancements | Smoke pending | [01-recording-enhancements.md](features/01-recording-enhancements.md) |
-| 2 | App launcher / command palette | Smoke pending | [03-app-launcher-command-palette.md](features/03-app-launcher-command-palette.md) |
+| 1 | Recording enhancements | Silent recording smoke passed | [01-recording-enhancements.md](features/01-recording-enhancements.md) |
+| 2 | App launcher / command palette | Keyboard smoke passed | [03-app-launcher-command-palette.md](features/03-app-launcher-command-palette.md) |
 | 3 | Clipboard history panel | Planned | [02-clipboard-history.md](features/02-clipboard-history.md) |
 | 4 | Enhanced screenshot tooling | Planned | [04-screenshot-tooling.md](features/04-screenshot-tooling.md) |
-| 5 | Notification center redesign | Planned | [05-notification-center-redesign.md](features/05-notification-center-redesign.md) |
-| 6 | Notification action buttons | Planned | [06-notification-action-buttons.md](features/06-notification-action-buttons.md) |
-| 7 | Wallpaper + Material color pipeline | Backlog | [08-theme-system.md](features/08-theme-system.md) |
+| 5 | Notification center redesign | Implemented | [05-notification-center-redesign.md](features/05-notification-center-redesign.md) |
+| 6 | Notification action buttons | Implemented | [06-notification-action-buttons.md](features/06-notification-action-buttons.md) |
+| 7 | Wallpaper + Material color pipeline | Implemented | [08-theme-system.md](features/08-theme-system.md) |
 | 8 | Color picker | Backlog | Future detail doc |
 | 9 | Idle inhibitor | Backlog | Future detail doc |
 | 10 | More complete media overlay | Backlog | Future detail doc |
 | 11 | Workspace / window overview | Backlog | Future detail doc |
 | 12 | Settings UI | Done | [07-settings-module.md](features/07-settings-module.md) |
 | 13 | Theme system (auto + matugen + export) | Core done | [08-theme-system.md](features/08-theme-system.md) |
-| 14 | Wallpaper manager | Planned | [09-wallpaper-manager.md](features/09-wallpaper-manager.md) |
+| 14 | Wallpaper manager | Dual-output `swww` smoke passed | [09-wallpaper-manager.md](features/09-wallpaper-manager.md) |
+
+## Runtime verification
+
+- In nested niri, focused-output and region recording both produced readable H.264 video using the shared-memory recording path. Audio and the physical desktop's recording controls still need a smoke pass.
+- In nested niri, launcher search, Up and Down, Enter to launch an application, and Escape to close all passed. The niri keybinding and focused-output placement across multiple monitors remain open.
+- In nested niri, manual mode changes and a scheduled switch updated both the system color preference and the configured GTK themes.
+- With `swww` 0.11.2 and two virtual Wayland outputs, rapid selection applied the latest wallpaper to both outputs. Restarting Quickshell restored it on both outputs.
+
 ## Recommended order
 
-1. Finish recording enhancements manual smoke because the implementation is already in place.
-2. Build the launcher / command palette because search, ranking, keyboard navigation, and compact overlay behavior become shared foundations for later utilities.
-3. Add clipboard history after the launcher foundation, so clipboard search can reuse the command palette model.
-4. Expand screenshot tooling after the launcher foundation, so OCR/search/save actions can share command palette affordances where useful.
-5. Build the theme system (auto light/dark + matugen dynamic palette + GTK/Qt export). See [08-theme-system.md](features/08-theme-system.md).
-6. Add wallpaper and Material color once settings/persistence requirements are clearer.
+1. Finish the desktop recording smoke and verify launcher placement on the focused monitor.
+2. Add clipboard history using the launcher search model.
+3. Expand screenshot tooling with OCR and capture actions in the command palette.
 
 ### Color picker
 

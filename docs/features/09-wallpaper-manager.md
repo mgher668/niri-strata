@@ -193,7 +193,7 @@ swww does not support `-m` / fill mode selection. It always scales the
 image to fill the screen. When swww is the selected backend:
 
 - Fill mode segmented row shows only "fill" (disabled state for others)
-- `--fill-color` is still supported for uncovered areas (letterboxing)
+- `--fill-color` takes bare hexadecimal digits for uncovered areas (letterboxing)
 
 ### swaybg kill before re-apply
 
